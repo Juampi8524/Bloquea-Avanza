@@ -29,9 +29,13 @@ let paredesEnTablero = [];
 
 // --- INICIO Y CONFIGURACIÓN ---
 window.onload = () => {
-    let nombreGuardado = localStorage.getItem('nombreJugadorBA');
-    if(nombreGuardado) {
-        nombreJugador = nombreGuardado;
+    try {
+        let nombreGuardado = localStorage.getItem('nombreJugadorBA');
+        if(nombreGuardado) {
+            nombreJugador = nombreGuardado;
+        }
+    } catch(e) {
+        // Ignorar si Android bloquea el almacenamiento
     }
     document.getElementById('input-nombre').value = nombreJugador;
     document.getElementById('nombre-menu').innerText = nombreJugador;
@@ -46,8 +50,14 @@ function guardarConfig() {
     let valor = document.getElementById('input-nombre').value.trim();
     if(valor !== "") {
         nombreJugador = valor;
-        localStorage.setItem('nombreJugadorBA', nombreJugador);
         document.getElementById('nombre-menu').innerText = nombreJugador;
+        
+        // Usamos try...catch para que NO se congele en Android si el almacenamiento está bloqueado
+        try {
+            localStorage.setItem('nombreJugadorBA', nombreJugador);
+        } catch (error) {
+            console.warn("Android bloqueó el guardado local, pero el nombre se aplicó para esta partida.");
+        }
     }
     mostrarPantalla('pantalla-inicio');
 }
@@ -103,24 +113,39 @@ function confirmarUnirse() {
         return;
     }
 
+    // Cambiamos el botón para avisar que está buscando
+    let btnConectar = document.querySelector('#modal-unirse button');
+    let textoOriginal = btnConectar.innerText;
+    btnConectar.innerText = "Buscando...";
+
     db.ref('salas/' + codigo).once('value').then((snapshot) => {
-        if (snapshot.exists() && snapshot.val().estado === 'esperando') {
-            miRol = 2; 
-            salaActual = codigo;
-            modoJuego = 'online';
-            
-            db.ref('salas/' + codigo).update({ 
-                estado: 'listo',
-                p2Nombre: nombreJugador
-            });
-            
-            cerrarModal(); 
-            document.getElementById('codigo-sala-ui').innerText = codigo;
-            mostrarPantalla('pantalla-espera');
-            escucharSala(codigo);
+        btnConectar.innerText = textoOriginal; // Restauramos el botón
+        
+        if (snapshot.exists()) {
+            let dataSala = snapshot.val();
+            if (dataSala.estado === 'esperando') {
+                miRol = 2; 
+                salaActual = codigo;
+                modoJuego = 'online';
+                
+                db.ref('salas/' + codigo).update({ 
+                    estado: 'listo',
+                    p2Nombre: nombreJugador
+                });
+                
+                cerrarModal(); 
+                document.getElementById('codigo-sala-ui').innerText = codigo;
+                mostrarPantalla('pantalla-espera');
+                escucharSala(codigo);
+            } else {
+                alert("La sala existe, pero la partida ya empezó o está llena.");
+            }
         } else {
-            alert("No se encontró la sala o la partida ya empezó.");
+            alert("No encontramos ninguna sala con este código.");
         }
+    }).catch((error) => {
+        btnConectar.innerText = textoOriginal;
+        alert("Error de conexión. Revisá el internet del emulador: " + error.message);
     });
 }
 
