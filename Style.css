@@ -1,0 +1,169 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: #1e1e2f;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.pantalla {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    background: #2a2a40;
+    padding: 40px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    text-align: center;
+    width: 90%;
+    max-width: 500px;
+}
+
+.pantalla.activa {
+    display: flex;
+}
+
+h1 {
+    margin-bottom: 30px;
+    color: #4facfe;
+}
+
+button {
+    background: #4facfe;
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    margin: 10px 0;
+    width: 100%;
+    font-size: 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+button:hover { background: #00f2fe; }
+
+button.btn-secundario {
+    background: #555;
+    margin-top: 20px;
+}
+button.btn-secundario:hover { background: #777; }
+
+.nota {
+    font-size: 14px;
+    color: #aaa;
+    margin-bottom: 20px;
+}
+
+/* Estilos del Juego */
+.info-juego { margin-bottom: 20px; }
+
+.controles {
+    display: flex;
+    gap: 10px;
+    margin: 15px 0;
+}
+
+.controles button {
+    padding: 10px;
+    font-size: 14px;
+    background: #444;
+}
+.controles button.activo { background: #4facfe; }
+
+#tablero {
+    display: grid;
+    grid-template-columns: repeat(9, 40px);
+    grid-template-rows: repeat(9, 40px);
+    gap: 5px;
+    background: #111;
+    padding: 5px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+.celda {
+    width: 40px;
+    height: 40px;
+    background: #333;
+    border-radius: 4px;
+    position: relative;
+    cursor: pointer;
+}
+
+.celda:hover { background: #444; }
+
+/* Jugadores */
+.jugador1, .jugador2 {
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    position: absolute;
+    top: 5px;
+    left: 5px;
+}
+.jugador1 { background: #4facfe; } /* Azul (Vos) */
+.jugador2 { background: #ff4b4b; } /* Rojo (IA/Amigo) */
+
+/* Paredes usando bordes */
+.pared-arriba { border-top: 5px solid #f1c40f !important; }
+.pared-abajo { border-bottom: 5px solid #f1c40f !important; }
+.pared-izquierda { border-left: 5px solid #f1c40f !important; }
+.pared-derecha { border-right: 5px solid #f1c40f !important; }
+/* Resto de tu código CSS original arriba... */
+
+input[type="text"] {
+    width: 100%;
+    padding: 12px;
+    margin: 15px 0;
+    border-radius: 8px;
+    border: 1px solid #4facfe;
+    background: #1e1e2f;
+    color: white;
+    font-size: 16px;
+    text-align: center;
+    outline: none;
+}
+
+input[type="text"]:focus {
+    border-color: #00f2fe;
+    box-shadow: 0 0 10px rgba(0, 242, 254, 0.5);
+}
+
+#btn-empezar:hover {
+    background: #218838 !important;
+}
+/* --- Estilos para el Cartel Flotante (Modal) --- */
+.modal {
+    display: none; /* Oculto por defecto */
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-contenido {
+    background: #2a2a40;
+    padding: 30px;
+    border-radius: 10px;
+    text-align: center;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 0 20px rgba(79, 172, 254, 0.3);
+    border: 1px solid #4facfe;
+}
+
+.modal-contenido h2 {
+    color: #4facfe;
+    margin-bottom: 15px;
+}

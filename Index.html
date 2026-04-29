@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bloquea & Avanza</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
+</head>
+<body>
+
+    <div id="pantalla-inicio" class="pantalla activa">
+        <h1>Bloquea & Avanza</h1>
+        <p style="margin-bottom: 20px;">Hola, <span id="nombre-menu">Jugador</span>!</p>
+        <button onclick="mostrarPantalla('pantalla-jugar')">Jugar</button>
+        <button onclick="mostrarPantalla('pantalla-config')">Configuración</button>
+    </div>
+
+    <div id="pantalla-config" class="pantalla">
+        <h1>Configuración</h1>
+        <p>Escribe tu nombre visible online:</p>
+        <input type="text" id="input-nombre" placeholder="Tu nombre..." maxlength="12">
+        <button onclick="guardarConfig()">Guardar y Volver</button>
+    </div>
+
+    <div id="pantalla-jugar" class="pantalla">
+        <h1>Modo de Juego</h1>
+        <button onclick="iniciarJuego('ia')">VS IA</button>
+        <button onclick="mostrarPantalla('pantalla-salas')">Salas (Multijugador)</button>
+        <button class="btn-secundario" onclick="mostrarPantalla('pantalla-inicio')">Volver</button>
+    </div>
+
+    <div id="pantalla-salas" class="pantalla">
+        <h1>Salas Multijugador</h1>
+        <button onclick="crearSala()">Crear Sala</button>
+        <button onclick="unirseSala()">Unirse a una Sala</button>
+        <button class="btn-secundario" onclick="mostrarPantalla('pantalla-jugar')">Volver</button>
+    </div>
+
+    <div id="modal-unirse" class="modal">
+        <div class="modal-contenido">
+            <h2>Ingresar Código</h2>
+            <p>Escribí el código de 6 dígitos de tu amigo:</p>
+            <input type="text" id="input-codigo" maxlength="6" placeholder="Ej: 123456">
+            <button onclick="confirmarUnirse()">Conectar</button>
+            <button class="btn-secundario" onclick="cerrarModal()">Cancelar</button>
+        </div>
+    </div>
+
+    <div id="pantalla-espera" class="pantalla">
+        <h1>Sala: <span id="codigo-sala-ui" style="color:#00f2fe"></span></h1>
+        <p id="mensaje-espera">Esperando a tu amigo...</p>
+        <div id="jugadores-sala" style="margin: 20px 0; font-size: 18px; font-weight: bold;"></div>
+        <button id="btn-empezar" style="display:none; background:#28a745" onclick="empezarPartida()">▶ Empezar Partida</button>
+        <button class="btn-secundario" onclick="mostrarPantalla('pantalla-inicio')">Cancelar</button>
+    </div>
+
+    <div id="pantalla-juego" class="pantalla">
+        <div class="info-juego">
+            <h2 id="turno-texto">Turno: Cargando...</h2>
+            <div class="controles">
+                <button id="btn-mover" class="activo" onclick="cambiarAccion('mover')">Acción: Moverse</button>
+                <button id="btn-pared" onclick="cambiarAccion('pared')">Acción: Poner Pared</button>
+            </div>
+            <p>Tus paredes restantes: <span id="paredes-p1">10</span></p>
+        </div>
+        
+        <div id="tablero"></div>
+
+        <button class="btn-secundario" onclick="mostrarPantalla('pantalla-inicio')">Abandonar Partida</button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
