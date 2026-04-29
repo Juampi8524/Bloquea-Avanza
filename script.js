@@ -87,18 +87,15 @@ function crearSala() {
 }
 
 function unirseSala() {
-    // Abrimos el cartel flotante y vaciamos el input
     document.getElementById('input-codigo').value = ''; 
     document.getElementById('modal-unirse').style.display = 'flex';
 }
 
 function cerrarModal() {
-    // Cerramos el cartel flotante
     document.getElementById('modal-unirse').style.display = 'none';
 }
 
 function confirmarUnirse() {
-    // Leemos el código que escribió el usuario
     let codigo = document.getElementById('input-codigo').value.trim();
     
     if (!codigo || codigo.length !== 6) {
@@ -117,7 +114,7 @@ function confirmarUnirse() {
                 p2Nombre: nombreJugador
             });
             
-            cerrarModal(); // Cerramos el cartel porque la conexión fue un éxito
+            cerrarModal(); 
             document.getElementById('codigo-sala-ui').innerText = codigo;
             mostrarPantalla('pantalla-espera');
             escucharSala(codigo);
@@ -126,19 +123,19 @@ function confirmarUnirse() {
         }
     });
 }
+
 function escucharSala(codigo) {
     db.ref('salas/' + codigo).on('value', (snapshot) => {
         const data = snapshot.val();
         if (!data) return;
 
-        // Lógica de Sala de Espera
         if (!juegoIniciadoOnline) {
             if (data.estado === 'listo') {
                 document.getElementById('jugadores-sala').innerText = data.p1Nombre + " (Azul) VS " + data.p2Nombre + " (Rojo)";
                 
                 if (miRol === 1) {
                     document.getElementById('mensaje-espera').innerText = "¡" + data.p2Nombre + " se unió!";
-                    document.getElementById('btn-empezar').style.display = 'block'; // Mostrar botón de empezar al creador
+                    document.getElementById('btn-empezar').style.display = 'block'; 
                 } else {
                     document.getElementById('mensaje-espera').innerText = "Esperando a que " + data.p1Nombre + " inicie la partida...";
                     document.getElementById('btn-empezar').style.display = 'none';
@@ -151,7 +148,6 @@ function escucharSala(codigo) {
             }
         }
 
-        // Lógica de Sincronización del Juego
         if (juegoIniciadoOnline && data.estado === 'jugando') {
             p1 = data.p1;
             p2 = data.p2;
@@ -312,36 +308,114 @@ function verificarVictoria() {
     }
 }
 
+// --- INTELIGENCIA ARTIFICIAL MEJORADA ---
 function turnoIA() {
-    let movido = false;
-    let intentos = [
-        { dx: p2.x, dy: p2.y + 1 }, 
-        { dx: p2.x - 1, dy: p2.y }, 
-        { dx: p2.x + 1, dy: p2.y }, 
-        { dx: p2.x, dy: p2.y - 1 }  
-    ];
+    let accionRealizada = false;
 
-    for (let mov of intentos) {
-        if (mov.dx >= 0 && mov.dx < 9 && mov.dy >= 0 && mov.dy < 9) {
-            if (esMovimientoValido(p2.x, p2.y, mov.dx, mov.dy)) {
-                p2.x = mov.dx;
-                p2.y = mov.dy;
-                movido = true;
-                break;
+    // 1. Decidir aleatoriamente si pone una pared para fastidiar (30% de probabilidad)
+    if (p2.paredes > 0 && Math.random() < 0.3) {
+        accionRealizada = intentarPonerParedIA();
+    }
+
+    // 2. Si no puso pared, buscar inteligentemente el mejor camino
+    if (!accionRealizada) {
+        let siguientePaso = obtenerSiguientePasoIA();
+        
+        if (siguientePaso && esMovimientoValido(p2.x, p2.y, siguientePaso.x, siguientePaso.y)) {
+            p2.x = siguientePaso.x;
+            p2.y = siguientePaso.y;
+            accionRealizada = true;
+        } else {
+            // Movimiento de emergencia por si el jugador obstruye la visión directa temporalmente
+            let intentos = [
+                { dx: p2.x, dy: p2.y + 1 }, { dx: p2.x - 1, dy: p2.y },
+                { dx: p2.x + 1, dy: p2.y }, { dx: p2.x, dy: p2.y - 1 }
+            ];
+            for (let mov of intentos) {
+                if (mov.dx >= 0 && mov.dx < 9 && mov.dy >= 0 && mov.dy < 9) {
+                    if (esMovimientoValido(p2.x, p2.y, mov.dx, mov.dy)) {
+                        p2.x = mov.dx;
+                        p2.y = mov.dy;
+                        accionRealizada = true;
+                        break;
+                    }
+                }
             }
         }
     }
 
-    if (!movido && p2.paredes > 0) {
-        let px = Math.floor(Math.random() * 9);
-        let py = Math.floor(Math.random() * 8) + 1;
-        paredesEnTablero.push({ x: px, y: py, lado: 'arriba' });
-        paredesEnTablero.push({ x: px, y: py-1, lado: 'abajo' });
-        p2.paredes--;
+    // 3. Si estaba completamente atrapada o acorralada, gasta una pared
+    if (!accionRealizada && p2.paredes > 0) {
+        accionRealizada = intentarPonerParedIA();
     }
 
     turno = 1;
     actualizarUI();
     dibujarTablero();
     verificarVictoria();
+}
+
+function intentarPonerParedIA() {
+    let intentosMax = 20; // Intenta varias veces buscar un lugar vacío
+    while(intentosMax > 0) {
+        let px = Math.floor(Math.random() * 9);
+        let py = Math.floor(Math.random() * 8) + 1; 
+        
+        let ocupado = paredesEnTablero.some(p => p.x === px && p.y === py && p.lado === 'arriba');
+        if (!ocupado) {
+            paredesEnTablero.push({ x: px, y: py, lado: 'arriba' });
+            paredesEnTablero.push({ x: px, y: py-1, lado: 'abajo' });
+            p2.paredes--;
+            return true;
+        }
+        intentosMax--;
+    }
+    return false;
+}
+
+function obtenerSiguientePasoIA() {
+    let cola = [{x: p2.x, y: p2.y, camino: []}];
+    let visitados = new Set();
+    visitados.add(`${p2.x},${p2.y}`);
+
+    while (cola.length > 0) {
+        let actual = cola.shift();
+
+        // Si su algoritmo imaginario ya llega a la última fila, elige el primer paso de esa ruta
+        if (actual.y === 8) {
+            return actual.camino[0]; 
+        }
+
+        let adyacentes = [
+            { dx: actual.x, dy: actual.y + 1 }, // Prioridad ir para abajo
+            { dx: actual.x - 1, dy: actual.y }, 
+            { dx: actual.x + 1, dy: actual.y }, 
+            { dx: actual.x, dy: actual.y - 1 }
+        ];
+
+        for (let mov of adyacentes) {
+            if (mov.dx >= 0 && mov.dx < 9 && mov.dy >= 0 && mov.dy < 9) {
+                if (!visitados.has(`${mov.dx},${mov.dy}`)) {
+                    if (caminoLibreIA(actual.x, actual.y, mov.dx, mov.dy)) {
+                        visitados.add(`${mov.dx},${mov.dy}`);
+                        cola.push({
+                            x: mov.dx, 
+                            y: mov.dy, 
+                            camino: [...actual.camino, {x: mov.dx, y: mov.dy}]
+                        });
+                    }
+                }
+            }
+        }
+    }
+    return null; // Si está atrapada sin salida
+}
+
+function caminoLibreIA(ox, oy, dx, dy) {
+    if (dy < oy && paredesEnTablero.some(p => p.x === ox && p.y === oy && p.lado === 'arriba')) return false;
+    if (dy > oy && paredesEnTablero.some(p => p.x === ox && p.y === oy && p.lado === 'abajo')) return false;
+    if (dx < ox && paredesEnTablero.some(p => p.x === ox && p.y === oy && p.lado === 'izquierda')) return false;
+    if (dx > ox && paredesEnTablero.some(p => p.x === ox && p.y === oy && p.lado === 'derecha')) return false;
+    // La IA asume que el jugador no es un obstáculo permanente al planear su ruta larga
+    return true; 
 }
