@@ -23,6 +23,7 @@ let nombreOponente = "Oponente";
 let modoJuego = 'ia';
 let turno = 1; 
 let accionActual = 'mover'; 
+let orientacionPared = 'H'; // H (Horizontal) o V (Vertical)
 let p1 = { x: 4, y: 8, paredes: 10 }; 
 let p2 = { x: 4, y: 0, paredes: 10 }; 
 let paredesEnTablero = [];
@@ -31,12 +32,14 @@ let paredesEnTablero = [];
 window.onload = () => {
     try {
         let nombreGuardado = localStorage.getItem('nombreJugadorBA');
-        if(nombreGuardado) {
-            nombreJugador = nombreGuardado;
+        if(nombreGuardado) nombreJugador = nombreGuardado;
+        
+        let colorGuardado = localStorage.getItem('colorParedBA');
+        if(colorGuardado) {
+            document.documentElement.style.setProperty('--color-pared', colorGuardado);
+            document.getElementById('input-color-pared').value = colorGuardado;
         }
-    } catch(e) {
-        // Ignorar si Android bloquea el almacenamiento
-    }
+    } catch(e) {}
     document.getElementById('input-nombre').value = nombreJugador;
     document.getElementById('nombre-menu').innerText = nombreJugador;
 };
@@ -47,31 +50,41 @@ function mostrarPantalla(idPantalla) {
 }
 
 function guardarConfig() {
-    let valor = document.getElementById('input-nombre').value.trim();
-    if(valor !== "") {
-        nombreJugador = valor;
+    let valorNombre = document.getElementById('input-nombre').value.trim();
+    let valorColor = document.getElementById('input-color-pared').value;
+
+    if(valorNombre !== "") {
+        nombreJugador = valorNombre;
         document.getElementById('nombre-menu').innerText = nombreJugador;
-        
-        // Usamos try...catch para que NO se congele en Android si el almacenamiento está bloqueado
-        try {
-            localStorage.setItem('nombreJugadorBA', nombreJugador);
-        } catch (error) {
-            console.warn("Android bloqueó el guardado local, pero el nombre se aplicó para esta partida.");
-        }
     }
+    
+    document.documentElement.style.setProperty('--color-pared', valorColor);
+
+    try {
+        localStorage.setItem('nombreJugadorBA', nombreJugador);
+        localStorage.setItem('colorParedBA', valorColor);
+    } catch (error) {
+        console.warn("Android bloqueó el guardado local, pero se aplicó para esta partida.");
+    }
+    
     mostrarPantalla('pantalla-inicio');
+}
+
+function alternarOrientacion() {
+    orientacionPared = orientacionPared === 'H' ? 'V' : 'H';
+    document.getElementById('btn-orientacion').innerText = "Dir: " + (orientacionPared === 'H' ? 'Horizontal' : 'Vertical');
 }
 
 function cambiarAccion(accion) {
     accionActual = accion;
     document.getElementById('btn-mover').classList.toggle('activo', accion === 'mover');
     document.getElementById('btn-pared').classList.toggle('activo', accion === 'pared');
+    document.getElementById('btn-orientacion').style.display = accion === 'pared' ? 'inline-block' : 'none';
 }
 
 // --- CREAR Y UNIRSE A SALAS ---
 function crearSala() {
     let codigo = Math.floor(100000 + Math.random() * 900000).toString(); 
-    
     miRol = 1; 
     salaActual = codigo;
     modoJuego = 'online';
@@ -107,20 +120,17 @@ function cerrarModal() {
 
 function confirmarUnirse() {
     let codigo = document.getElementById('input-codigo').value.trim();
-    
     if (!codigo || codigo.length !== 6) {
         alert("El código debe tener exactamente 6 números.");
         return;
     }
 
-    // Cambiamos el botón para avisar que está buscando
     let btnConectar = document.querySelector('#modal-unirse button');
     let textoOriginal = btnConectar.innerText;
     btnConectar.innerText = "Buscando...";
 
     db.ref('salas/' + codigo).once('value').then((snapshot) => {
-        btnConectar.innerText = textoOriginal; // Restauramos el botón
-        
+        btnConectar.innerText = textoOriginal;
         if (snapshot.exists()) {
             let dataSala = snapshot.val();
             if (dataSala.estado === 'esperando') {
@@ -145,7 +155,7 @@ function confirmarUnirse() {
         }
     }).catch((error) => {
         btnConectar.innerText = textoOriginal;
-        alert("Error de conexión. Revisá el internet del emulador: " + error.message);
+        alert("Error de conexión: " + error.message);
     });
 }
 
@@ -157,7 +167,6 @@ function escucharSala(codigo) {
         if (!juegoIniciadoOnline) {
             if (data.estado === 'listo') {
                 document.getElementById('jugadores-sala').innerText = data.p1Nombre + " (Azul) VS " + data.p2Nombre + " (Rojo)";
-                
                 if (miRol === 1) {
                     document.getElementById('mensaje-espera').innerText = "¡" + data.p2Nombre + " se unió!";
                     document.getElementById('btn-empezar').style.display = 'block'; 
@@ -207,6 +216,8 @@ function iniciarJuego(modo) {
 
 function iniciarJuegoTablero() {
     cambiarAccion('mover');
+    orientacionPared = 'H';
+    document.getElementById('btn-orientacion').innerText = "Dir: Horizontal";
     actualizarUI();
     dibujarTablero();
     mostrarPantalla('pantalla-juego');
@@ -215,11 +226,7 @@ function iniciarJuegoTablero() {
 function actualizarUI() {
     let texto = "";
     if (modoJuego === 'online') {
-        if (turno === miRol) {
-            texto = "Es tu turno, " + nombreJugador;
-        } else {
-            texto = "Turno de " + nombreOponente + "...";
-        }
+        texto = turno === miRol ? "Es tu turno, " + nombreJugador : "Turno de " + nombreOponente + "...";
     } else {
         texto = turno === 1 ? "Tu turno (" + nombreJugador + ")" : "Turno de la IA (Rojo)";
     }
@@ -238,9 +245,22 @@ function dibujarTablero() {
             celda.className = 'celda';
             celda.dataset.x = x;
             celda.dataset.y = y;
-            
-            let paredesAqui = paredesEnTablero.filter(p => p.x === x && p.y === y);
-            paredesAqui.forEach(p => celda.classList.add(`pared-${p.lado}`));
+
+            // Dibujar paredes dinámicas de 2 bloques
+            paredesEnTablero.forEach(p => {
+                if(p.o === 'H') {
+                    if (x === p.x && y === p.y) celda.classList.add('pared-arriba');
+                    if (x === p.x+1 && y === p.y) celda.classList.add('pared-arriba');
+                    if (x === p.x && y === p.y-1) celda.classList.add('pared-abajo');
+                    if (x === p.x+1 && y === p.y-1) celda.classList.add('pared-abajo');
+                }
+                if(p.o === 'V') {
+                    if (x === p.x && y === p.y) celda.classList.add('pared-izquierda');
+                    if (x === p.x && y === p.y+1) celda.classList.add('pared-izquierda');
+                    if (x === p.x-1 && y === p.y) celda.classList.add('pared-derecha');
+                    if (x === p.x-1 && y === p.y+1) celda.classList.add('pared-derecha');
+                }
+            });
 
             if (p1.x === x && p1.y === y) {
                 let ficha = document.createElement('div');
@@ -266,7 +286,7 @@ function procesarClic(x, y) {
     let movimientoValido = false;
 
     if (accionActual === 'mover') {
-        if (esMovimientoValido(jugadorActual.x, jugadorActual.y, x, y)) {
+        if (esMovimientoValido(jugadorActual.x, jugadorActual.y, x, y, paredesEnTablero)) {
             jugadorActual.x = x;
             jugadorActual.y = y;
             movimientoValido = true;
@@ -275,11 +295,18 @@ function procesarClic(x, y) {
         }
     } else if (accionActual === 'pared') {
         if (jugadorActual.paredes > 0) {
-            if (!paredesEnTablero.some(p => p.x === x && p.y === y && p.lado === 'arriba')) {
-                paredesEnTablero.push({ x: x, y: y, lado: 'arriba' });
-                if(y > 0) paredesEnTablero.push({ x: x, y: y-1, lado: 'abajo' });
-                jugadorActual.paredes--;
-                movimientoValido = true;
+            if (esParedValida(x, y, orientacionPared)) {
+                let paredesTemp = [...paredesEnTablero, {x: x, y: y, o: orientacionPared}];
+                // Verificar que no se cierre el paso para ningún jugador
+                if (existeCamino(p1, 0, paredesTemp) && existeCamino(p2, 8, paredesTemp)) {
+                    paredesEnTablero.push({ x: x, y: y, o: orientacionPared });
+                    jugadorActual.paredes--;
+                    movimientoValido = true;
+                } else {
+                    alert("No podés bloquear por completo el camino a la meta.");
+                }
+            } else {
+                alert("Posición inválida para la pared (Choca o sale del tablero).");
             }
         } else {
             alert("No te quedan paredes.");
@@ -306,14 +333,13 @@ function procesarClic(x, y) {
     }
 }
 
-function esMovimientoValido(ox, oy, dx, dy) {
+// --- SISTEMA DE COLISIÓN Y BÚSQUEDA DE CAMINO ---
+function esMovimientoValido(ox, oy, dx, dy, paredes) {
     let distancia = Math.abs(ox - dx) + Math.abs(oy - dy);
     if (distancia !== 1) return false; 
-    
-    if (dy < oy && paredesEnTablero.some(p => p.x === ox && p.y === oy && p.lado === 'arriba')) return false;
-    if (dy > oy && paredesEnTablero.some(p => p.x === ox && p.y === oy && p.lado === 'abajo')) return false;
-    if (dx < ox && paredesEnTablero.some(p => p.x === ox && p.y === oy && p.lado === 'izquierda')) return false;
-    if (dx > ox && paredesEnTablero.some(p => p.x === ox && p.y === oy && p.lado === 'derecha')) return false;
+    if (dx < 0 || dx > 8 || dy < 0 || dy > 8) return false;
+
+    if (!esMovimientoLibre(ox, oy, dx, dy, paredes)) return false;
 
     if (dx === p1.x && dy === p1.y) return false;
     if (dx === p2.x && dy === p2.y) return false;
@@ -321,44 +347,108 @@ function esMovimientoValido(ox, oy, dx, dy) {
     return true;
 }
 
+function esMovimientoLibre(ox, oy, dx, dy, paredes) {
+    if (dy < oy && paredes.some(p => p.o === 'H' && p.y === oy && (p.x === ox || p.x === ox - 1))) return false;
+    if (dy > oy && paredes.some(p => p.o === 'H' && p.y === dy && (p.x === ox || p.x === ox - 1))) return false;
+    if (dx < ox && paredes.some(p => p.o === 'V' && p.x === ox && (p.y === oy || p.y === oy - 1))) return false;
+    if (dx > ox && paredes.some(p => p.o === 'V' && p.x === dx && (p.y === oy || p.y === oy - 1))) return false;
+    return true;
+}
+
+function esParedValida(x, y, o) {
+    if (o === 'H') {
+        if (x >= 8 || y <= 0) return false;
+        if (paredesEnTablero.some(p => p.o === 'H' && p.y === y && (p.x === x || p.x === x - 1 || p.x === x + 1))) return false;
+        if (paredesEnTablero.some(p => p.o === 'V' && p.x === x + 1 && p.y === y - 1)) return false;
+    } else {
+        if (y >= 8 || x <= 0) return false;
+        if (paredesEnTablero.some(p => p.o === 'V' && p.x === x && (p.y === y || p.y === y - 1 || p.y === y + 1))) return false;
+        if (paredesEnTablero.some(p => p.o === 'H' && p.y === y + 1 && p.x === x - 1)) return false;
+    }
+    return true;
+}
+
+function existeCamino(jugador, filaObjetivo, paredesTemp) {
+    let cola = [{x: jugador.x, y: jugador.y}];
+    let visitados = new Set([`${jugador.x},${jugador.y}`]);
+
+    while (cola.length > 0) {
+        let actual = cola.shift();
+        if (actual.y === filaObjetivo) return true;
+
+        let movs = [
+            {dx: actual.x, dy: actual.y-1}, {dx: actual.x, dy: actual.y+1},
+            {dx: actual.x-1, dy: actual.y}, {dx: actual.x+1, dy: actual.y}
+        ];
+
+        for (let m of movs) {
+            if (m.dx >= 0 && m.dx < 9 && m.dy >= 0 && m.dy < 9) {
+                if (esMovimientoLibre(actual.x, actual.y, m.dx, m.dy, paredesTemp)) {
+                    if (!visitados.has(`${m.dx},${m.dy}`)) {
+                        visitados.add(`${m.dx},${m.dy}`);
+                        cola.push({x: m.dx, y: m.dy});
+                    }
+                }
+            }
+        }
+    }
+    return false;
+}
+
+// --- VICTORIA O DERROTA ---
 function verificarVictoria() {
     if (p1.y === 0) {
-        let ganador = modoJuego === 'online' ? (miRol === 1 ? nombreJugador : nombreOponente) : nombreJugador;
-        alert("¡Ganó " + ganador + " (Azul)!");
-        mostrarPantalla('pantalla-inicio');
+        if (modoJuego === 'online') {
+            mostrarVictoria(miRol === 1 ? '¡Ganaste!' : 'Perdiste. Ganó ' + nombreOponente);
+        } else {
+            mostrarVictoria('¡Ganaste!');
+        }
     } else if (p2.y === 8) {
-        let ganador = modoJuego === 'online' ? (miRol === 2 ? nombreJugador : nombreOponente) : "La IA";
-        alert("¡Ganó " + ganador + " (Rojo)!");
-        mostrarPantalla('pantalla-inicio');
+        if (modoJuego === 'online') {
+            mostrarVictoria(miRol === 2 ? '¡Ganaste!' : 'Perdiste. Ganó ' + nombreOponente);
+        } else {
+            mostrarVictoria('Perdiste. Ganó La IA');
+        }
     }
+}
+
+function mostrarVictoria(mensaje) {
+    document.getElementById('titulo-victoria').innerText = mensaje;
+    let colorTitulo = mensaje.includes('Ganaste') ? '#4facfe' : '#ff4b4b';
+    document.getElementById('titulo-victoria').style.color = colorTitulo;
+    document.getElementById('modal-victoria').style.display = 'flex';
+}
+
+function cerrarVictoria() {
+    document.getElementById('modal-victoria').style.display = 'none';
+    mostrarPantalla('pantalla-inicio');
 }
 
 // --- INTELIGENCIA ARTIFICIAL MEJORADA ---
 function turnoIA() {
+    if (p1.y === 0 || p2.y === 8) return; // Si terminó no hace nada
+
     let accionRealizada = false;
 
-    // 1. Decidir aleatoriamente si pone una pared para fastidiar (30% de probabilidad)
     if (p2.paredes > 0 && Math.random() < 0.3) {
         accionRealizada = intentarPonerParedIA();
     }
 
-    // 2. Si no puso pared, buscar inteligentemente el mejor camino
     if (!accionRealizada) {
         let siguientePaso = obtenerSiguientePasoIA();
         
-        if (siguientePaso && esMovimientoValido(p2.x, p2.y, siguientePaso.x, siguientePaso.y)) {
+        if (siguientePaso && esMovimientoValido(p2.x, p2.y, siguientePaso.x, siguientePaso.y, paredesEnTablero)) {
             p2.x = siguientePaso.x;
             p2.y = siguientePaso.y;
             accionRealizada = true;
         } else {
-            // Movimiento de emergencia por si el jugador obstruye la visión directa temporalmente
             let intentos = [
                 { dx: p2.x, dy: p2.y + 1 }, { dx: p2.x - 1, dy: p2.y },
                 { dx: p2.x + 1, dy: p2.y }, { dx: p2.x, dy: p2.y - 1 }
             ];
             for (let mov of intentos) {
                 if (mov.dx >= 0 && mov.dx < 9 && mov.dy >= 0 && mov.dy < 9) {
-                    if (esMovimientoValido(p2.x, p2.y, mov.dx, mov.dy)) {
+                    if (esMovimientoValido(p2.x, p2.y, mov.dx, mov.dy, paredesEnTablero)) {
                         p2.x = mov.dx;
                         p2.y = mov.dy;
                         accionRealizada = true;
@@ -369,7 +459,6 @@ function turnoIA() {
         }
     }
 
-    // 3. Si estaba completamente atrapada o acorralada, gasta una pared
     if (!accionRealizada && p2.paredes > 0) {
         accionRealizada = intentarPonerParedIA();
     }
@@ -381,17 +470,19 @@ function turnoIA() {
 }
 
 function intentarPonerParedIA() {
-    let intentosMax = 20; // Intenta varias veces buscar un lugar vacío
+    let intentosMax = 30;
     while(intentosMax > 0) {
         let px = Math.floor(Math.random() * 9);
-        let py = Math.floor(Math.random() * 8) + 1; 
+        let py = Math.floor(Math.random() * 9); 
+        let po = Math.random() < 0.5 ? 'H' : 'V';
         
-        let ocupado = paredesEnTablero.some(p => p.x === px && p.y === py && p.lado === 'arriba');
-        if (!ocupado) {
-            paredesEnTablero.push({ x: px, y: py, lado: 'arriba' });
-            paredesEnTablero.push({ x: px, y: py-1, lado: 'abajo' });
-            p2.paredes--;
-            return true;
+        if (esParedValida(px, py, po)) {
+            let paredesTemp = [...paredesEnTablero, {x: px, y: py, o: po}];
+            if (existeCamino(p1, 0, paredesTemp) && existeCamino(p2, 8, paredesTemp)) {
+                paredesEnTablero.push({ x: px, y: py, o: po });
+                p2.paredes--;
+                return true;
+            }
         }
         intentosMax--;
     }
@@ -406,13 +497,10 @@ function obtenerSiguientePasoIA() {
     while (cola.length > 0) {
         let actual = cola.shift();
 
-        // Si su algoritmo imaginario ya llega a la última fila, elige el primer paso de esa ruta
-        if (actual.y === 8) {
-            return actual.camino[0]; 
-        }
+        if (actual.y === 8) return actual.camino[0]; 
 
         let adyacentes = [
-            { dx: actual.x, dy: actual.y + 1 }, // Prioridad ir para abajo
+            { dx: actual.x, dy: actual.y + 1 },
             { dx: actual.x - 1, dy: actual.y }, 
             { dx: actual.x + 1, dy: actual.y }, 
             { dx: actual.x, dy: actual.y - 1 }
@@ -421,7 +509,7 @@ function obtenerSiguientePasoIA() {
         for (let mov of adyacentes) {
             if (mov.dx >= 0 && mov.dx < 9 && mov.dy >= 0 && mov.dy < 9) {
                 if (!visitados.has(`${mov.dx},${mov.dy}`)) {
-                    if (caminoLibreIA(actual.x, actual.y, mov.dx, mov.dy)) {
+                    if (esMovimientoLibre(actual.x, actual.y, mov.dx, mov.dy, paredesEnTablero)) {
                         visitados.add(`${mov.dx},${mov.dy}`);
                         cola.push({
                             x: mov.dx, 
@@ -433,14 +521,5 @@ function obtenerSiguientePasoIA() {
             }
         }
     }
-    return null; // Si está atrapada sin salida
-}
-
-function caminoLibreIA(ox, oy, dx, dy) {
-    if (dy < oy && paredesEnTablero.some(p => p.x === ox && p.y === oy && p.lado === 'arriba')) return false;
-    if (dy > oy && paredesEnTablero.some(p => p.x === ox && p.y === oy && p.lado === 'abajo')) return false;
-    if (dx < ox && paredesEnTablero.some(p => p.x === ox && p.y === oy && p.lado === 'izquierda')) return false;
-    if (dx > ox && paredesEnTablero.some(p => p.x === ox && p.y === oy && p.lado === 'derecha')) return false;
-    // La IA asume que el jugador no es un obstáculo permanente al planear su ruta larga
-    return true; 
+    return null;
 }
