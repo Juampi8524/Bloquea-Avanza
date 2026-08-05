@@ -1,3 +1,7 @@
+:root {
+    --color-pared: #f1c40f; /* Color por defecto */
+}
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -10,10 +14,10 @@ body {
     color: white;
     display: flex;
     justify-content: center;
-    align-items: flex-start; /* Evita que el juego se corte por arriba en celulares */
-    min-height: 100vh; /* Permite que el fondo crezca si el juego es más alto que la pantalla */
-    padding: 40px 0; /* Te da un espacio extra arriba y abajo para que no quede pegado al borde */
-    overflow-y: auto; /* Activa la capacidad de arrastrar/scrollear verticalmente */
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 40px 0;
+    overflow-y: auto;
 }
 
 .pantalla {
@@ -59,6 +63,26 @@ button.btn-secundario {
 }
 button.btn-secundario:hover { background: #777; }
 
+/* Configuración Extra */
+.config-color {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #1e1e2f;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    border: 1px solid #4facfe;
+    width: 100%;
+}
+input[type="color"] {
+    border: none;
+    background: none;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+}
+
 .nota {
     font-size: 14px;
     color: #aaa;
@@ -72,12 +96,16 @@ button.btn-secundario:hover { background: #777; }
     display: flex;
     gap: 10px;
     margin: 15px 0;
+    flex-wrap: wrap;
+    justify-content: center;
 }
 
 .controles button {
     padding: 10px;
     font-size: 14px;
     background: #444;
+    width: auto;
+    flex-grow: 1;
 }
 .controles button.activo { background: #4facfe; }
 
@@ -112,14 +140,14 @@ button.btn-secundario:hover { background: #777; }
     top: 5px;
     left: 5px;
 }
-.jugador1 { background: #4facfe; } /* Azul (Vos) */
-.jugador2 { background: #ff4b4b; } /* Rojo (IA/Amigo) */
+.jugador1 { background: #4facfe; }
+.jugador2 { background: #ff4b4b; }
 
-/* Paredes usando bordes */
-.pared-arriba { border-top: 5px solid #f1c40f !important; }
-.pared-abajo { border-bottom: 5px solid #f1c40f !important; }
-.pared-izquierda { border-left: 5px solid #f1c40f !important; }
-.pared-derecha { border-right: 5px solid #f1c40f !important; }
+/* Paredes dinámicas usando variable CSS */
+.pared-arriba { border-top: 5px solid var(--color-pared) !important; }
+.pared-abajo { border-bottom: 5px solid var(--color-pared) !important; }
+.pared-izquierda { border-left: 5px solid var(--color-pared) !important; }
+.pared-derecha { border-right: 5px solid var(--color-pared) !important; }
 
 input[type="text"] {
     width: 100%;
@@ -143,9 +171,9 @@ input[type="text"]:focus {
     background: #218838 !important;
 }
 
-/* --- Estilos para el Cartel Flotante (Modal) --- */
+/* Modal Estilos */
 .modal {
-    display: none; /* Oculto por defecto */
+    display: none;
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(0, 0, 0, 0.8);
