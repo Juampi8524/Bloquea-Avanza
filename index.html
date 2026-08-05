@@ -22,6 +22,12 @@
         <h1>Configuración</h1>
         <p>Escribe tu nombre visible online:</p>
         <input type="text" id="input-nombre" placeholder="Tu nombre..." maxlength="12">
+        
+        <div class="config-color">
+            <p style="margin: 0;">Color de tus paredes:</p>
+            <input type="color" id="input-color-pared" value="#f1c40f">
+        </div>
+
         <button onclick="guardarConfig()">Guardar y Volver</button>
     </div>
 
@@ -61,8 +67,9 @@
         <div class="info-juego">
             <h2 id="turno-texto">Turno: Cargando...</h2>
             <div class="controles">
-                <button id="btn-mover" class="activo" onclick="cambiarAccion('mover')">Acción: Moverse</button>
-                <button id="btn-pared" onclick="cambiarAccion('pared')">Acción: Poner Pared</button>
+                <button id="btn-mover" class="activo" onclick="cambiarAccion('mover')">Moverse</button>
+                <button id="btn-pared" onclick="cambiarAccion('pared')">Poner Pared</button>
+                <button id="btn-orientacion" style="display:none; background:#d35400" onclick="alternarOrientacion()">Dir: Horizontal</button>
             </div>
             <p>Tus paredes restantes: <span id="paredes-p1">10</span></p>
         </div>
@@ -70,6 +77,14 @@
         <div id="tablero"></div>
 
         <button class="btn-secundario" onclick="mostrarPantalla('pantalla-inicio')">Abandonar Partida</button>
+    </div>
+
+    <!-- Nuevo Modal de Victoria/Derrota -->
+    <div id="modal-victoria" class="modal">
+        <div class="modal-contenido">
+            <h2 id="titulo-victoria" style="font-size: 32px;">¡Ganaste!</h2>
+            <button onclick="cerrarVictoria()" style="margin-top: 20px;">Volver al Menú</button>
+        </div>
     </div>
 
     <script src="script.js"></script>
