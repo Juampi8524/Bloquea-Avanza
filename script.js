@@ -9,7 +9,7 @@ let accionActual = 'mover';
 let orientacionPared = 'horizontal';
 let nombreJugador = "Jugador";
 let salaActual = "";
-let paredesTablero = []; // Guarda las paredes colocadas
+let paredesTablero = []; 
 
 // --- VARIABLES GLOBALES NUEVAS ---
 let tamanoTablero = 9;
@@ -32,14 +32,23 @@ function iniciarJuego(modo) {
     iniciarJuegoTablero();
 }
 
-// --- SALAS PRIVADAS (MULTIJUGADOR) ---
+// --- SALAS PRIVADAS Y LOBBY ---
 function crearSala() {
     let codigo = Math.floor(100000 + Math.random() * 900000).toString();
     salaActual = codigo;
     miRol = 1;
-    alert(`Tu código de sala es: ${codigo}. Compártelo con tu amigo.`);
     
-    // Lógica Firebase (Requiere db inicializada)
+    // Configurar vista Lobby
+    document.getElementById('codigo-sala-display').innerText = codigo;
+    document.getElementById('estado-jugadores').innerText = "Jugadores: 1/2";
+    document.getElementById('lobby-p1').innerText = `1. ${avatarJugador} ${nombreJugador} (Líder)`;
+    document.getElementById('lobby-p2').innerText = "2. Esperando rival...";
+    
+    let btnIniciar = document.getElementById('btn-iniciar-multijugador');
+    btnIniciar.disabled = true;
+    btnIniciar.style.background = "#555";
+    btnIniciar.innerText = "Esperando rival...";
+
     if(typeof db !== 'undefined') {
         db.ref('salas/' + codigo).set({
             estado: 'esperando',
@@ -47,7 +56,7 @@ function crearSala() {
         });
         escucharSala(codigo);
     }
-    mostrarPantalla('pantalla-jugar'); // Ir a config de tablero antes de iniciar
+    mostrarPantalla('pantalla-lobby');
 }
 
 function unirseSala() {
@@ -55,16 +64,69 @@ function unirseSala() {
     if(codigo && codigo.length === 6) {
         salaActual = codigo;
         miRol = 2;
+        
+        document.getElementById('codigo-sala-display').innerText = codigo;
+        document.getElementById('btn-iniciar-multijugador').disabled = true;
+        document.getElementById('btn-iniciar-multijugador').innerText = "Esperando al líder...";
+
         if(typeof db !== 'undefined') {
             db.ref('salas/' + codigo).update({
-                estado: 'jugando',
                 p2: { nombre: nombreJugador, avatar: avatarJugador }
             });
             escucharSala(codigo);
         }
-        alert("Te has unido a la sala. Esperando que el líder inicie la partida...");
+        mostrarPantalla('pantalla-lobby');
     } else {
         alert("Código no válido.");
+    }
+}
+
+function escucharSala(codigo) {
+    if(typeof db === 'undefined') return;
+    
+    db.ref('salas/' + codigo).on('value', (snapshot) => {
+        let data = snapshot.val();
+        if(!data) return;
+
+        // Actualizar UI del Lobby
+        if (data.p1) {
+            document.getElementById('lobby-p1').innerText = `1. ${data.p1.avatar} ${data.p1.nombre}`;
+        }
+        if (data.p2) {
+            document.getElementById('estado-jugadores').innerText = "Jugadores: 2/2";
+            document.getElementById('lobby-p2').innerText = `2. ${data.p2.avatar} ${data.p2.nombre}`;
+            
+            // Habilitar botón de iniciar solo para el líder
+            if (miRol === 1 && data.estado === 'esperando') {
+                let btn = document.getElementById('btn-iniciar-multijugador');
+                btn.disabled = false;
+                btn.style.background = "#4facfe";
+                btn.innerText = "Iniciar Partida";
+            }
+        }
+
+        // Si el líder le da click a iniciar
+        if (data.estado === 'jugando' && !document.getElementById('pantalla-juego').classList.contains('activa')) {
+            modoJuego = 'online';
+            
+            // Asignar los avatares según quién es quién
+            if(miRol === 1) {
+                document.getElementById('ficha-p1').innerText = data.p1.avatar;
+                document.getElementById('ficha-p2').innerText = data.p2.avatar;
+            } else {
+                document.getElementById('ficha-p1').innerText = data.p2.avatar; // El jugador local siempre es ficha-p1 en su pantalla
+                document.getElementById('ficha-p2').innerText = data.p1.avatar; // El rival
+            }
+            iniciarJuegoTablero();
+        }
+    });
+}
+
+function iniciarDesdeLobby() {
+    if(typeof db !== 'undefined') {
+        db.ref('salas/' + salaActual).update({
+            estado: 'jugando'
+        });
     }
 }
 
@@ -111,7 +173,7 @@ function iniciarJuegoTablero() {
     tamanoTablero = parseInt(document.getElementById('select-tamano').value);
     
     let centro = Math.floor(tamanoTablero / 2);
-    let cantParedes = Math.floor(tamanoTablero * 1.2); // Escala paredes por tamaño
+    let cantParedes = Math.floor(tamanoTablero * 1.2); 
     
     p1 = { x: centro, y: tamanoTablero - 1, paredes: cantParedes, metaY: 0, color: 'blue' };
     p2 = { x: centro, y: 0, paredes: cantParedes, metaY: tamanoTablero - 1, color: 'red' };
@@ -131,7 +193,6 @@ function iniciarJuegoTablero() {
             celda.dataset.y = y;
             celda.onclick = () => procesarClic(x, y);
             
-            // Hover para ayudar visualmente dónde se pondrá la pared
             celda.onmouseover = () => simularPared(celda, x, y);
             celda.onmouseout = () => celda.style.boxShadow = 'none';
             
@@ -139,7 +200,6 @@ function iniciarJuegoTablero() {
         }
     }
 
-    // Configurar CSS de fichas
     document.getElementById('ficha-p1').style.background = p1.color;
     document.getElementById('ficha-p2').style.background = p2.color;
 
@@ -151,7 +211,6 @@ function iniciarJuegoTablero() {
     mostrarPantalla('pantalla-juego');
 }
 
-// Ayuda visual para paredes
 function simularPared(celda, x, y) {
     if(accionActual !== 'pared') return;
     celda.style.boxShadow = orientacionPared === 'horizontal' 
@@ -198,8 +257,12 @@ function actualizarPosicionesFichas() {
 
 // --- LÓGICA DE MOVIMIENTO Y PAREDES ---
 function procesarClic(x, y) {
+    if (modoJuego === 'online' && turno !== miRol) {
+        alert("No es tu turno.");
+        return; 
+    }
+
     if (accionActual === 'mover') {
-        // Validación básica de 1 casilla (sin salto por ahora)
         let jugadorActual = turno === 1 ? p1 : p2;
         let distX = Math.abs(jugadorActual.x - x);
         let distY = Math.abs(jugadorActual.y - y);
@@ -218,23 +281,23 @@ function procesarClic(x, y) {
             return;
         }
 
-        // Agregar pared temporalmente para chequear camino
         let nuevaPared = { x, y, orientacion: orientacionPared };
         paredesTablero.push(nuevaPared);
         
         if (!existeCamino(p1) || !existeCamino(p2)) {
-            paredesTablero.pop(); // Revertir
+            paredesTablero.pop(); 
             alert("¡Movimiento ilegal! Estás encerrando a un jugador sin salida a su meta.");
             return;
         }
 
-        // Si es válido, aplicamos estilos
         let celdaDOM = document.querySelector(`.celda[data-x="${x}"][data-y="${y}"]`);
         if (orientacionPared === 'horizontal') celdaDOM.classList.add('pared-abajo');
         else celdaDOM.classList.add('pared-derecha');
         
         jugadorActual.paredes--;
-        document.getElementById('paredes-p1').innerText = miRol === 1 ? p1.paredes : p2.paredes;
+        if (turno === miRol) {
+            document.getElementById('paredes-p1').innerText = p1.paredes;
+        }
         ejecutarTurno();
     }
 }
@@ -243,11 +306,9 @@ function ejecutarTurno() {
     reproducirSonido(accionActual);
     actualizarPosicionesFichas();
     
-    // Rotar turno
     turno = turno === 1 ? 2 : 1;
     document.getElementById('turno-texto').innerText = turno === miRol ? "Tu turno" : "Turno del oponente";
     
-    // Validar Victoria
     if(p1.y === p1.metaY) { alert("¡Jugador 1 Gana!"); mostrarPantalla('pantalla-inicio'); }
     if(p2.y === p2.metaY) { alert("¡Jugador 2 Gana!"); mostrarPantalla('pantalla-inicio'); }
 }
@@ -264,21 +325,17 @@ function existeCamino(jugador) {
         if (actual.y === jugador.metaY) return true;
 
         let movimientos = [
-            { dx: 0, dy: -1 }, // Arriba
-            { dx: 0, dy: 1 },  // Abajo
-            { dx: -1, dy: 0 }, // Izquierda
-            { dx: 1, dy: 0 }   // Derecha
+            { dx: 0, dy: -1 }, 
+            { dx: 0, dy: 1 },  
+            { dx: -1, dy: 0 }, 
+            { dx: 1, dy: 0 }   
         ];
 
         for (let mov of movimientos) {
             let nx = actual.x + mov.dx;
             let ny = actual.y + mov.dy;
 
-            // Limites del tablero
             if (nx >= 0 && nx < tamanoTablero && ny >= 0 && ny < tamanoTablero) {
-                // AQUÍ iría la validación para cruzar paredes (simplificado para el script)
-                // Se debe cruzar la lista paredesTablero para ver si bloquea este paso exacto.
-                
                 let key = `${nx},${ny}`;
                 if (!visitados.has(key)) {
                     visitados.add(key);
