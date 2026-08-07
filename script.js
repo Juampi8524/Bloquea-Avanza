@@ -123,11 +123,24 @@ function escucharSala(codigo) {
             if(miRol === 1) {
                 document.getElementById('ficha-p1').innerText = data.p1.avatar;
                 document.getElementById('ficha-p2').innerText = data.p2.avatar;
+                // El líder crea el estado inicial del juego en la base de datos
+                db.ref('salas/' + salaActual + '/estadoJuego').set({
+                    p1: p1, p2: p2, turno: turno, paredesTablero: []
+                });
             } else {
-                document.getElementById('ficha-p1').innerText = data.p2.avatar; // El jugador local siempre es ficha-p1 en su pantalla
-                document.getElementById('ficha-p2').innerText = data.p1.avatar; // El rival
+                document.getElementById('ficha-p1').innerText = data.p2.avatar; 
+                document.getElementById('ficha-p2').innerText = data.p1.avatar; 
             }
             iniciarJuegoTablero();
+        }
+
+        // ACTUALIZACIÓN ONLINE: Sincronizar los movimientos y paredes
+        if (data.estadoJuego && modoJuego === 'online' && document.getElementById('pantalla-juego').classList.contains('activa')) {
+            p1 = data.estadoJuego.p1;
+            p2 = data.estadoJuego.p2;
+            turno = data.estadoJuego.turno;
+            paredesTablero = data.estadoJuego.paredesTablero || [];
+            renderizarEstado(); // Redibuja todo el tablero para ambos
         }
     });
 }
@@ -203,8 +216,9 @@ function iniciarJuegoTablero() {
             celda.dataset.y = y;
             celda.onclick = () => procesarClic(x, y);
             
+            // Mostrar sombra amarilla en base a paredes de 2 bloques
             celda.onmouseover = () => simularPared(celda, x, y);
-            celda.onmouseout = () => celda.style.boxShadow = 'none';
+            celda.onmouseout = () => { document.querySelectorAll('.celda').forEach(c => c.style.boxShadow = 'none'); };
             
             tablero.appendChild(celda);
         }
@@ -215,17 +229,28 @@ function iniciarJuegoTablero() {
 
     cambiarAccion('mover');
     iniciarCronometros();
-    actualizarPosicionesFichas();
-    document.getElementById('turno-texto').innerText = "Tu turno";
-    document.getElementById('paredes-p1').innerText = p1.paredes;
+    renderizarEstado();
     mostrarPantalla('pantalla-juego');
 }
 
+// Ahora simula colocar paredes que ocupan 2 posiciones
 function simularPared(celda, x, y) {
     if(accionActual !== 'pared') return;
-    celda.style.boxShadow = orientacionPared === 'horizontal' 
-        ? 'inset 0 -5px 0 yellow' 
-        : 'inset -5px 0 0 yellow';
+    document.querySelectorAll('.celda').forEach(c => c.style.boxShadow = 'none');
+    
+    if (orientacionPared === 'horizontal') {
+        if (x < tamanoTablero - 1) { // Que no se salga del mapa por la derecha
+            celda.style.boxShadow = 'inset 0 -5px 0 yellow';
+            let celda2 = document.querySelector('.celda[data-x="' + (x+1) + '"][data-y="' + y + '"]');
+            if(celda2) celda2.style.boxShadow = 'inset 0 -5px 0 yellow';
+        }
+    } else {
+        if (y < tamanoTablero - 1) { // Que no se salga por abajo
+            celda.style.boxShadow = 'inset -5px 0 0 yellow';
+            let celda2 = document.querySelector('.celda[data-x="' + x + '"][data-y="' + (y+1) + '"]');
+            if(celda2) celda2.style.boxShadow = 'inset -5px 0 0 yellow';
+        }
+    }
 }
 
 function iniciarCronometros() {
@@ -254,15 +279,35 @@ function iniciarCronometros() {
     }, 1000);
 }
 
-function actualizarPosicionesFichas() {
+// Nueva función maestra para dibujar TODO (Fichas y Paredes) - Útil para Multijugador
+function renderizarEstado() {
+    // Dibujar Fichas
     let f1 = document.getElementById('ficha-p1');
     let f2 = document.getElementById('ficha-p2');
-    
     f1.style.left = (p1.x * 45 + 5) + "px";
     f1.style.top = (p1.y * 45 + 5) + "px";
-    
     f2.style.left = (p2.x * 45 + 5) + "px";
     f2.style.top = (p2.y * 45 + 5) + "px";
+
+    // Limpiar paredes viejas y dibujar las nuevas
+    document.querySelectorAll('.celda').forEach(c => {
+        c.classList.remove('pared-abajo');
+        c.classList.remove('pared-derecha');
+    });
+    
+    paredesTablero.forEach(p => {
+        let cell = document.querySelector('.celda[data-x="' + p.x + '"][data-y="' + p.y + '"]');
+        if (cell) {
+            if (p.dir === 'h') cell.classList.add('pared-abajo');
+            if (p.dir === 'v') cell.classList.add('pared-derecha');
+        }
+    });
+
+    document.getElementById('turno-texto').innerText = turno === miRol ? "Tu turno" : "Turno del oponente";
+    document.getElementById('paredes-p1').innerText = miRol === 1 ? p1.paredes : p2.paredes;
+
+    if(p1.y === p1.metaY) { alert("¡Jugador 1 Gana!"); mostrarPantalla('pantalla-inicio'); }
+    if(p2.y === p2.metaY) { alert("¡Jugador 2 Gana!"); mostrarPantalla('pantalla-inicio'); }
 }
 
 // --- LÓGICA DE MOVIMIENTO Y PAREDES ---
@@ -272,12 +317,21 @@ function procesarClic(x, y) {
         return; 
     }
 
+    let jugadorActual = turno === 1 ? p1 : p2;
+
     if (accionActual === 'mover') {
-        let jugadorActual = turno === 1 ? p1 : p2;
         let distX = Math.abs(jugadorActual.x - x);
         let distY = Math.abs(jugadorActual.y - y);
         
         if ((distX === 1 && distY === 0) || (distX === 0 && distY === 1)) {
+            // Verificar colisiones con paredes antes de moverse
+            let dirX = x - jugadorActual.x;
+            let dirY = y - jugadorActual.y;
+            if (!puedeMoverse(jugadorActual.x, jugadorActual.y, dirX, dirY)) {
+                alert("Hay una pared en el camino.");
+                return;
+            }
+
             if (turno === 1) { p1.x = x; p1.y = y; }
             else { p2.x = x; p2.y = y; }
             ejecutarTurno();
@@ -285,45 +339,70 @@ function procesarClic(x, y) {
             alert("Movimiento inválido.");
         }
     } else {
-        let jugadorActual = turno === 1 ? p1 : p2;
         if (jugadorActual.paredes <= 0) {
             alert("No te quedan paredes.");
             return;
         }
 
-        let nuevaPared = { x, y, orientacion: orientacionPared };
-        paredesTablero.push(nuevaPared);
+        // Lógica de paredes ocupando 2 espacios
+        let celda1, celda2;
+        if (orientacionPared === 'horizontal') {
+            if (x >= tamanoTablero - 1) return; // Fuera del mapa
+            celda1 = { x: x, y: y, dir: 'h' };
+            celda2 = { x: x + 1, y: y, dir: 'h' };
+        } else {
+            if (y >= tamanoTablero - 1) return; // Fuera del mapa
+            celda1 = { x: x, y: y, dir: 'v' };
+            celda2 = { x: x, y: y + 1, dir: 'v' };
+        }
+
+        // Chequear que no estemos poniendo la pared sobre otra pared
+        let overlap = paredesTablero.some(p => 
+            (p.x === celda1.x && p.y === celda1.y && p.dir === celda1.dir) ||
+            (p.x === celda2.x && p.y === celda2.y && p.dir === celda2.dir)
+        );
+        if (overlap) { alert("Ya hay una pared ahí."); return; }
+
+        paredesTablero.push(celda1, celda2);
         
         if (!existeCamino(p1) || !existeCamino(p2)) {
-            paredesTablero.pop(); 
+            paredesTablero.pop(); paredesTablero.pop(); // Revertimos las 2
             alert("¡Movimiento ilegal! Estás encerrando a un jugador sin salida a su meta.");
             return;
         }
-
-        let celdaDOM = document.querySelector('.celda[data-x="' + x + '"][data-y="' + y + '"]');
-        if (orientacionPared === 'horizontal') celdaDOM.classList.add('pared-abajo');
-        else celdaDOM.classList.add('pared-derecha');
         
         jugadorActual.paredes--;
-        if (turno === miRol) {
-            document.getElementById('paredes-p1').innerText = p1.paredes;
-        }
         ejecutarTurno();
     }
 }
 
+// Ahora el turno se le pasa al otro jugador online
 function ejecutarTurno() {
     reproducirSonido(accionActual);
-    actualizarPosicionesFichas();
+    turno = turno === 1 ? 2 : 1; 
     
-    turno = turno === 1 ? 2 : 1;
-    document.getElementById('turno-texto').innerText = turno === miRol ? "Tu turno" : "Turno del oponente";
-    
-    if(p1.y === p1.metaY) { alert("¡Jugador 1 Gana!"); mostrarPantalla('pantalla-inicio'); }
-    if(p2.y === p2.metaY) { alert("¡Jugador 2 Gana!"); mostrarPantalla('pantalla-inicio'); }
+    if (modoJuego === 'online' && typeof db !== 'undefined') {
+        // Enviar nuestro movimiento a Firebase para que el rival lo vea
+        db.ref('salas/' + salaActual + '/estadoJuego').set({
+            p1: p1,
+            p2: p2,
+            turno: turno,
+            paredesTablero: paredesTablero || []
+        });
+    } else {
+        renderizarEstado(); // Si es VS IA, solo dibuja
+    }
 }
 
-// --- ALGORITMO BFS (VERIFICAR CAMINO) ---
+// --- ALGORITMO BFS (VERIFICAR CAMINO Y COLISIONES) ---
+function puedeMoverse(cx, cy, dx, dy) {
+    if (dy === -1) return !paredesTablero.some(p => p.x === cx && p.y === cy - 1 && p.dir === 'h'); // Mover Arriba
+    if (dy === 1)  return !paredesTablero.some(p => p.x === cx && p.y === cy && p.dir === 'h');     // Mover Abajo
+    if (dx === -1) return !paredesTablero.some(p => p.x === cx - 1 && p.y === cy && p.dir === 'v'); // Mover Izquierda
+    if (dx === 1)  return !paredesTablero.some(p => p.x === cx && p.y === cy && p.dir === 'v');     // Mover Derecha
+    return true;
+}
+
 function existeCamino(jugador) {
     let visitados = new Set();
     let cola = [{ x: jugador.x, y: jugador.y }];
@@ -346,10 +425,13 @@ function existeCamino(jugador) {
             let ny = actual.y + mov.dy;
 
             if (nx >= 0 && nx < tamanoTablero && ny >= 0 && ny < tamanoTablero) {
-                let key = nx + "," + ny;
-                if (!visitados.has(key)) {
-                    visitados.add(key);
-                    cola.push({ x: nx, y: ny });
+                // Ahora el verificador sabe si hay una pared en el medio
+                if (puedeMoverse(actual.x, actual.y, mov.dx, mov.dy)) {
+                    let key = nx + "," + ny;
+                    if (!visitados.has(key)) {
+                        visitados.add(key);
+                        cola.push({ x: nx, y: ny });
+                    }
                 }
             }
         }
