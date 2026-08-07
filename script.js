@@ -41,7 +41,7 @@ function crearSala() {
     // Configurar vista Lobby
     document.getElementById('codigo-sala-display').innerText = codigo;
     document.getElementById('estado-jugadores').innerText = "Jugadores: 1/2";
-    document.getElementById('lobby-p1').innerText = `1. ${avatarJugador} ${nombreJugador} (Líder)`;
+    document.getElementById('lobby-p1').innerText = "1. " + avatarJugador + " " + nombreJugador + " (Líder)";
     document.getElementById('lobby-p2').innerText = "2. Esperando rival...";
     
     let btnIniciar = document.getElementById('btn-iniciar-multijugador');
@@ -56,6 +56,8 @@ function crearSala() {
         });
         escucharSala(codigo);
     }
+    
+    alert("Tu código de sala es: " + codigo + ". Compártelo con tu amigo.");
     mostrarPantalla('pantalla-lobby');
 }
 
@@ -90,11 +92,11 @@ function escucharSala(codigo) {
 
         // Actualizar UI del Lobby
         if (data.p1) {
-            document.getElementById('lobby-p1').innerText = `1. ${data.p1.avatar} ${data.p1.nombre}`;
+            document.getElementById('lobby-p1').innerText = "1. " + data.p1.avatar + " " + data.p1.nombre;
         }
         if (data.p2) {
             document.getElementById('estado-jugadores').innerText = "Jugadores: 2/2";
-            document.getElementById('lobby-p2').innerText = `2. ${data.p2.avatar} ${data.p2.nombre}`;
+            document.getElementById('lobby-p2').innerText = "2. " + data.p2.avatar + " " + data.p2.nombre;
             
             // Habilitar botón de iniciar solo para el líder
             if (miRol === 1 && data.estado === 'esperando') {
@@ -181,8 +183,8 @@ function iniciarJuegoTablero() {
     turno = 1;
     
     const tablero = document.getElementById('tablero');
-    tablero.style.gridTemplateColumns = `repeat(${tamanoTablero}, 40px)`;
-    tablero.style.gridTemplateRows = `repeat(${tamanoTablero}, 40px)`;
+    tablero.style.gridTemplateColumns = "repeat(" + tamanoTablero + ", 40px)";
+    tablero.style.gridTemplateRows = "repeat(" + tamanoTablero + ", 40px)";
     tablero.innerHTML = '';
     
     for (let y = 0; y < tamanoTablero; y++) {
@@ -231,14 +233,14 @@ function iniciarCronometros() {
         let tRival = miRol === 1 ? tiempoP2 : tiempoP1;
 
         document.getElementById('tiempo-total').innerText = 
-            `0${Math.floor(tActivo/60)}:${(tActivo%60).toString().padStart(2, '0')} (Tú)`;
+            "0" + Math.floor(tActivo/60) + ":" + (tActivo%60).toString().padStart(2, '0') + " (Tú)";
         document.getElementById('tiempo-turno').innerText = 
-            `${Math.floor(tRival/60)}:${(tRival%60).toString().padStart(2, '0')} (Rival)`;
+            Math.floor(tRival/60) + ":" + (tRival%60).toString().padStart(2, '0') + " (Rival)";
 
         if (tiempoP1 <= 0 || tiempoP2 <= 0) {
             clearInterval(timerInterval);
             let ganador = tiempoP1 <= 0 ? "Jugador 2" : "Jugador 1";
-            alert(`¡Se acabó el tiempo! Gana ${ganador}`);
+            alert("¡Se acabó el tiempo! Gana " + ganador);
             mostrarPantalla('pantalla-inicio');
         }
     }, 1000);
@@ -290,7 +292,7 @@ function procesarClic(x, y) {
             return;
         }
 
-        let celdaDOM = document.querySelector(`.celda[data-x="${x}"][data-y="${y}"]`);
+        let celdaDOM = document.querySelector('.celda[data-x="' + x + '"][data-y="' + y + '"]');
         if (orientacionPared === 'horizontal') celdaDOM.classList.add('pared-abajo');
         else celdaDOM.classList.add('pared-derecha');
         
@@ -317,7 +319,7 @@ function ejecutarTurno() {
 function existeCamino(jugador) {
     let visitados = new Set();
     let cola = [{ x: jugador.x, y: jugador.y }];
-    visitados.add(`${jugador.x},${jugador.y}`);
+    visitados.add(jugador.x + "," + jugador.y);
 
     while (cola.length > 0) {
         let actual = cola.shift();
@@ -336,7 +338,7 @@ function existeCamino(jugador) {
             let ny = actual.y + mov.dy;
 
             if (nx >= 0 && nx < tamanoTablero && ny >= 0 && ny < tamanoTablero) {
-                let key = `${nx},${ny}`;
+                let key = nx + "," + ny;
                 if (!visitados.has(key)) {
                     visitados.add(key);
                     cola.push({ x: nx, y: ny });
