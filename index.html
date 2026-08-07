@@ -66,13 +66,24 @@
         <button class="btn-secundario" onclick="mostrarPantalla('pantalla-jugar')">Volver</button>
     </div>
 
-    <!-- Modales de unirse y espera omitidos por brevedad (se mantienen igual que antes) -->
+    <div id="pantalla-lobby" class="pantalla">
+        <h1>Sala de Espera</h1>
+        <p style="font-size: 24px; margin-bottom: 10px;">Código: <strong id="codigo-sala-display" style="color: #e67e22;">------</strong></p>
+        <p id="estado-jugadores" style="font-size: 20px; margin-bottom: 20px;">Jugadores: 1/2</p>
+        
+        <div style="margin-bottom: 20px; text-align: left; background: #1e1e2f; padding: 15px; border-radius: 8px; border: 1px solid #4facfe; width: 100%;">
+            <p id="lobby-p1" style="margin-bottom: 10px;">1. Esperando...</p>
+            <p id="lobby-p2">2. Esperando...</p>
+        </div>
+
+        <button id="btn-iniciar-multijugador" onclick="iniciarDesdeLobby()" disabled style="background: #555;">Esperando rival...</button>
+        <button class="btn-secundario" onclick="mostrarPantalla('pantalla-salas')">Abandonar Sala</button>
+    </div>
     
     <div id="pantalla-juego" class="pantalla" style="max-width: 600px;">
         <div class="info-juego">
             <h2 id="turno-texto">Turno: Cargando...</h2>
             
-            <!-- Cronómetros -->
             <div class="relojes">
                 <div class="reloj">Total: <span id="tiempo-total">03:00</span></div>
                 <div class="reloj turno">Turno: <span id="tiempo-turno">15</span>s</div>
@@ -88,12 +99,10 @@
         
         <div id="contenedor-tablero" style="position: relative;">
             <div id="tablero"></div>
-            <!-- Fichas separadas del tablero para animarlas -->
             <div id="ficha-p1" class="jugador-ficha">😃</div>
             <div id="ficha-p2" class="jugador-ficha">🤖</div>
         </div>
 
-        <!-- Chat Emojis -->
         <div id="chat-emojis" class="controles" style="margin-top: 15px;">
             <button onclick="enviarEmoji('👍')">👍</button>
             <button onclick="enviarEmoji('😡')">😡</button>
@@ -105,7 +114,6 @@
         <button class="btn-secundario" onclick="mostrarPantalla('pantalla-inicio')">Abandonar Partida</button>
     </div>
 
-    <!-- Sonidos -->
     <audio id="sonido-mover" src="https://actions.google.com/sounds/v1/foley/footstep_single_on_wood.ogg"></audio>
     <audio id="sonido-pared" src="https://actions.google.com/sounds/v1/impacts/wood_plank_hit.ogg"></audio>
     
