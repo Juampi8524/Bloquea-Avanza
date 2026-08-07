@@ -1,5 +1,21 @@
+// --- CONFIGURACIÓN DE FIREBASE ---
+// Aquí están los datos reales sacados de tus capturas
+const firebaseConfig = {
+    apiKey: "AIzaSyBxCFp3QPKXAQ2RGvJggVeIZU_ckoPmBr4",
+    authDomain: "chapas-42a4b.firebaseapp.com",
+    databaseURL: "https://chapas-42a4b-default-rtdb.firebaseio.com",
+    projectId: "chapas-42a4b",
+    storageBucket: "chapas-42a4b.firebasestorage.app",
+    messagingSenderId: "456792916464",
+    appId: "1:456792916464:web:ceb1bdd9c3ad78bd595d35",
+    measurementId: "G-QNJELSL2C9"
+};
+
+// Inicializar Firebase y la Base de Datos
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
 // --- VARIABLES BASE Y MULTIJUGADOR ---
-let db; // Asume que Firebase se inicializa en el HTML
 let modoJuego = 'ia';
 let turno = 1;
 let miRol = 1;
