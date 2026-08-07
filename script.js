@@ -1,3 +1,15 @@
+// --- VARIABLES BASE (Para que el resto del código funcione) ---
+let db; 
+let modoJuego = 'ia';
+let turno = 1;
+let miRol = 1;
+let p1 = { x: 4, y: 8, paredes: 10 };
+let p2 = { x: 4, y: 0, paredes: 10 };
+let accionActual = 'mover';
+let orientacionPared = 'horizontal';
+let nombreJugador = "Jugador";
+let salaActual = "";
+
 // --- VARIABLES GLOBALES NUEVAS ---
 let tamanoTablero = 9;
 let avatarJugador = "😃";
@@ -8,11 +20,81 @@ let tiempoTotal = 180; // 3 minutos en segundos
 let tiempoTurno = 15; // 15 segundos
 let timerInterval;
 
+// --- FUNCIONES DE NAVEGACIÓN Y MENÚS (Faltaban) ---
+function mostrarPantalla(id) {
+    document.querySelectorAll('.pantalla').forEach(p => p.classList.remove('activa'));
+    document.getElementById(id).classList.add('activa');
+}
+
+function iniciarJuego(modo) {
+    modoJuego = modo;
+    iniciarJuegoTablero();
+}
+
+function crearSala() {
+    alert("Función Crear Sala en desarrollo...");
+}
+
+function unirseSala() {
+    alert("Función Unirse a Sala en desarrollo...");
+}
+
 // --- CONFIGURACIÓN ---
 function guardarConfig() {
-    // (Mismo código de antes) +
+    let inputNombre = document.getElementById('input-nombre').value;
+    if(inputNombre.trim() !== "") {
+        nombreJugador = inputNombre;
+        document.getElementById('nombre-menu').innerText = nombreJugador;
+    }
+    
+    let colorPared = document.getElementById('input-color-pared').value;
+    document.documentElement.style.setProperty('--color-pared', colorPared);
+
     avatarJugador = document.getElementById('select-avatar').value;
     document.getElementById('ficha-p1').innerText = avatarJugador;
+    
+    mostrarPantalla('pantalla-inicio');
+}
+
+// --- JUGABILIDAD: CONTROLES DEL JUEGO (Faltaban) ---
+function cambiarAccion(accion) {
+    accionActual = accion;
+    document.getElementById('btn-mover').classList.remove('activo');
+    document.getElementById('btn-pared').classList.remove('activo');
+    
+    if(accion === 'mover') {
+        document.getElementById('btn-mover').classList.add('activo');
+        document.getElementById('btn-orientacion').style.display = 'none';
+    } else {
+        document.getElementById('btn-pared').classList.add('activo');
+        document.getElementById('btn-orientacion').style.display = 'inline-block';
+    }
+}
+
+function alternarOrientacion() {
+    let btn = document.getElementById('btn-orientacion');
+    if (orientacionPared === 'horizontal') {
+        orientacionPared = 'vertical';
+        btn.innerText = 'Dir: Vertical';
+    } else {
+        orientacionPared = 'horizontal';
+        btn.innerText = 'Dir: Horizontal';
+    }
+}
+
+function dibujarTablero() {
+    const tablero = document.getElementById('tablero');
+    tablero.innerHTML = '';
+    for (let y = 0; y < tamanoTablero; y++) {
+        for (let x = 0; x < tamanoTablero; x++) {
+            let celda = document.createElement('div');
+            celda.className = 'celda';
+            celda.dataset.x = x;
+            celda.dataset.y = y;
+            celda.onclick = () => procesarClic(x, y);
+            tablero.appendChild(celda);
+        }
+    }
 }
 
 // --- JUGABILIDAD: TAMAÑOS Y TIEMPO ---
@@ -33,6 +115,7 @@ function iniciarJuegoTablero() {
     iniciarCronometros();
     dibujarTablero();
     actualizarPosicionesFichas();
+    document.getElementById('turno-texto').innerText = "Tu turno";
     mostrarPantalla('pantalla-juego');
 }
 
@@ -80,11 +163,17 @@ function actualizarPosicionesFichas() {
     f2.style.top = (p2.y * 45 + 5) + "px";
 }
 
-// Modificar procesarClic para incluir sonidos e indicadores
 function procesarClic(x, y) {
-    // ... (lógica anterior de validación de movimiento/pared) ...
+    // Simulamos que el movimiento es válido para que veas la interacción
+    // (Aquí va tu lógica real de validación de movimiento/pared)
+    let movimientoValido = true; 
 
     if (movimientoValido) {
+        if (accionActual === 'mover') {
+            if (turno === 1) { p1.x = x; p1.y = y; }
+            else { p2.x = x; p2.y = y; }
+        }
+
         reproducirSonido(accionActual);
         tiempoTurno = 15; // Resetear timer de turno
         
@@ -95,13 +184,15 @@ function procesarClic(x, y) {
 
         actualizarPosicionesFichas();
         
-        // ... (resto de lógica de turnos y Firebase)
+        // Rotar turno de prueba
+        turno = turno === 1 ? 2 : 1;
+        document.getElementById('turno-texto').innerText = turno === 1 ? "Tu turno" : "Turno del oponente";
     }
 }
 
 // --- MULTIJUGADOR: CHAT EMOJIS Y MATCHMAKING GLOBAL ---
 function enviarEmoji(emoji) {
-    if (modoJuego !== 'online') return;
+    if (modoJuego !== 'online' || typeof db === 'undefined') return;
     db.ref('salas/' + salaActual + '/chat').set({
         emisor: nombreJugador,
         icono: emoji,
@@ -109,8 +200,9 @@ function enviarEmoji(emoji) {
     });
 }
 
-// Escuchar chat en la función escucharSala()
+// Escuchar chat
 function escucharChat(codigo) {
+    if(typeof db === 'undefined') return;
     db.ref('salas/' + codigo + '/chat').on('value', (snapshot) => {
         let chat = snapshot.val();
         if(chat) {
@@ -123,6 +215,7 @@ function escucharChat(codigo) {
 // Estructura base para el Matchmaking Global
 function buscarPartidaGlobal() {
     alert("Buscando oponente aleatorio...");
+    if(typeof db === 'undefined') return;
     db.ref('matchmaking/cola').push({
         nombre: nombreJugador,
         avatar: avatarJugador,
