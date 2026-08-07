@@ -61,8 +61,16 @@ function crearSala() {
     mostrarPantalla('pantalla-lobby');
 }
 
+// NUEVA FUNCIÓN: Muestra la pantalla para ingresar el código
 function unirseSala() {
-    let codigo = prompt("Ingresa el código de 6 dígitos de la sala:");
+    document.getElementById('input-codigo-sala').value = ""; 
+    mostrarPantalla('pantalla-unirse');
+}
+
+// NUEVA FUNCIÓN: Procesa el código ingresado
+function confirmarUnirseSala() {
+    let codigo = document.getElementById('input-codigo-sala').value;
+    
     if(codigo && codigo.length === 6) {
         salaActual = codigo;
         miRol = 2;
@@ -79,7 +87,7 @@ function unirseSala() {
         }
         mostrarPantalla('pantalla-lobby');
     } else {
-        alert("Código no válido.");
+        alert("Por favor, ingresa un código válido de 6 dígitos.");
     }
 }
 
