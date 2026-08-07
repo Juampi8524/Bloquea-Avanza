@@ -66,6 +66,16 @@
         <button class="btn-secundario" onclick="mostrarPantalla('pantalla-jugar')">Volver</button>
     </div>
 
+    <div id="pantalla-unirse" class="pantalla">
+        <h1>Unirse a Sala</h1>
+        <p style="margin-bottom: 20px;">Ingresa el código que te dio el líder:</p>
+        
+        <input type="text" id="input-codigo-sala" placeholder="Ej: 123456" maxlength="6" style="letter-spacing: 5px; font-size: 24px; font-weight: bold;">
+        
+        <button onclick="confirmarUnirseSala()">Entrar a la Sala</button>
+        <button class="btn-secundario" onclick="mostrarPantalla('pantalla-salas')">Volver</button>
+    </div>
+
     <div id="pantalla-lobby" class="pantalla">
         <h1>Sala de Espera</h1>
         <p style="font-size: 24px; margin-bottom: 10px;">Código: <strong id="codigo-sala-display" style="color: #e67e22;">------</strong></p>
