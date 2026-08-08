@@ -10,6 +10,7 @@ const firebaseConfig = {
     measurementId: "G-QNJELSL2C9"
 };
 
+// Inicializar Firebase y la Base de Datos
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
@@ -65,12 +66,16 @@ function crearSala() {
     btnIniciar.style.background = "#555";
     btnIniciar.innerText = "Esperando rival...";
 
-    let tamanoLider = parseInt(document.getElementById('select-tamano').value);
+    // Habilitar selector del lobby y copiar el valor actual del menú principal
+    let selectLobby = document.getElementById('select-tamano-lobby');
+    selectLobby.disabled = false;
+    selectLobby.value = document.getElementById('select-tamano').value;
+    let tamanoLider = parseInt(selectLobby.value);
 
     if(typeof db !== 'undefined') {
         db.ref('salas/' + codigo).set({
             estado: 'esperando',
-            tamano: tamanoLider, // El líder guarda el tamaño para que el rival se adapte
+            tamano: tamanoLider, 
             p1: { nombre: nombreJugador, avatar: avatarJugador }
         });
         escucharSala(codigo);
@@ -78,6 +83,16 @@ function crearSala() {
     
     alert("Tu código de sala es: " + codigo + ". Compártelo con tu amigo.");
     mostrarPantalla('pantalla-lobby');
+}
+
+// NUEVA FUNCIÓN: Permite al líder actualizar el tamaño estando en la sala
+function actualizarTamanoLobby() {
+    if (miRol === 1 && typeof db !== 'undefined' && salaActual !== "") {
+        let nuevoTamano = parseInt(document.getElementById('select-tamano-lobby').value);
+        // Sincronizar el select original por si acaso
+        document.getElementById('select-tamano').value = nuevoTamano;
+        db.ref('salas/' + salaActual).update({ tamano: nuevoTamano });
+    }
 }
 
 function unirseSala() {
@@ -115,9 +130,14 @@ function escucharSala(codigo) {
         let data = snapshot.val();
         if(!data) return;
 
-        // Si el rival lee el tamaño de la base de datos, sincroniza su menú
-        if (data.tamano && miRol === 2) {
-            document.getElementById('select-tamano').value = data.tamano;
+        // Si el líder cambia el tamaño de la sala, sincronizar los menús
+        if (data.tamano) {
+            document.getElementById('select-tamano-lobby').value = data.tamano;
+            document.getElementById('select-tamano').value = data.tamano; 
+            if (miRol === 2) {
+                // El jugador 2 no puede cambiarlo
+                document.getElementById('select-tamano-lobby').disabled = true; 
+            }
         }
 
         if (data.p1) {
@@ -294,7 +314,6 @@ function iniciarCronometros() {
     }, 1000);
 }
 
-// Disparador gráfico de la victoria
 function dispararVictoria(ganador, motivo) {
     if (juegoTerminado) return;
     juegoTerminado = true;
@@ -330,11 +349,9 @@ function renderizarEstado() {
 
     document.getElementById('turno-texto').innerText = turno === miRol ? "Tu turno" : "Turno del oponente";
     
-    // Acá se ven los inventarios de ambos
     document.getElementById('paredes-p1').innerText = miRol === 1 ? p1.paredes : p2.paredes;
     document.getElementById('paredes-p2').innerText = miRol === 1 ? p2.paredes : p1.paredes;
 
-    // Control de meta
     if(p1.y === p1.metaY) { dispararVictoria(miRol === 1 ? nombreJugador : nombreRival, "Llegó al otro lado de la mesa"); }
     if(p2.y === p2.metaY) { dispararVictoria(miRol === 2 ? nombreJugador : nombreRival, "Llegó al otro lado de la mesa"); }
 }
@@ -354,7 +371,7 @@ function procesarClic(x, y) {
         let dirY = y - jugadorActual.y;
         let distAbs = Math.abs(dirX) + Math.abs(dirY);
         
-        if (distAbs === 1) { // Movimiento Normal
+        if (distAbs === 1) { 
             if (x === oponenteActual.x && y === oponenteActual.y) {
                 alert("Oponente en frente. ¡Haz clic detrás de él para saltarlo!");
                 return;
@@ -366,13 +383,11 @@ function procesarClic(x, y) {
             if (turno === 1) { p1.x = x; p1.y = y; } else { p2.x = x; p2.y = y; }
             ejecutarTurno();
 
-        } else if (distAbs === 2 && (dirX === 0 || dirY === 0)) { // Salto sobre el Oponente
+        } else if (distAbs === 2 && (dirX === 0 || dirY === 0)) { 
             let medioX = jugadorActual.x + (dirX / 2);
             let medioY = jugadorActual.y + (dirY / 2);
             
-            // Verificamos si el oponente está justo en el medio del salto
             if (oponenteActual.x === medioX && oponenteActual.y === medioY) {
-                // Chequeamos que no haya pared entre el jugador y el rival, ni entre el rival y la meta
                 if (puedeMoverse(jugadorActual.x, jugadorActual.y, dirX/2, dirY/2) && 
                     puedeMoverse(oponenteActual.x, oponenteActual.y, dirX/2, dirY/2)) {
                     
