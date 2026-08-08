@@ -63,7 +63,6 @@ button.btn-secundario {
 }
 button.btn-secundario:hover { background: #777; }
 
-/* Configuración Extra */
 .config-color {
     display: flex;
     align-items: center;
@@ -89,7 +88,6 @@ input[type="color"] {
     margin-bottom: 20px;
 }
 
-/* Estilos del Juego */
 .info-juego { margin-bottom: 20px; }
 
 .controles {
@@ -111,9 +109,7 @@ input[type="color"] {
 
 #tablero {
     display: grid;
-    grid-template-columns: repeat(9, 40px);
-    grid-template-rows: repeat(9, 40px);
-    gap: 5px;
+    gap: 5px; 
     background: #111;
     padding: 5px;
     border-radius: 5px;
@@ -131,7 +127,6 @@ input[type="color"] {
 
 .celda:hover { background: #444; }
 
-/* Jugadores */
 .jugador1, .jugador2 {
     border-radius: 50%;
     width: 30px;
@@ -143,7 +138,6 @@ input[type="color"] {
 .jugador1 { background: #4facfe; }
 .jugador2 { background: #ff4b4b; }
 
-/* Paredes dinámicas usando variable CSS */
 .pared-arriba { border-top: 5px solid var(--color-pared) !important; }
 .pared-abajo { border-bottom: 5px solid var(--color-pared) !important; }
 .pared-izquierda { border-left: 5px solid var(--color-pared) !important; }
@@ -171,7 +165,6 @@ input[type="text"]:focus {
     background: #218838 !important;
 }
 
-/* Modal Estilos */
 .modal {
     display: none;
     position: fixed;
@@ -198,7 +191,6 @@ input[type="text"]:focus {
     margin-bottom: 15px;
 }
 
-/* Agrega esto a tu style.css existente */
 .config-item {
     display: flex;
     align-items: center;
@@ -235,13 +227,6 @@ select {
     margin-bottom: 20px;
 }
 
-#tablero {
-    display: grid;
-    /* Las columnas se definen por JS según el tamaño */
-    gap: 5px; 
-}
-
-/* Animación fluida de las fichas */
 .jugador-ficha {
     position: absolute;
     width: 40px;
@@ -250,14 +235,13 @@ select {
     justify-content: center;
     align-items: center;
     font-size: 24px;
-    transition: top 0.3s ease-out, left 0.3s ease-out; /* Acá está la magia fluida */
+    transition: top 0.3s ease-out, left 0.3s ease-out; 
     z-index: 10;
-    border-radius: 50%; /* Hace el fondo redondo */
-    color: white;       /* Ajusta si el emoji lo requiere */
-    box-shadow: 0 4px 10px rgba(0,0,0,0.5); /* Le da un efecto 3D genial */
+    border-radius: 50%; 
+    color: white;       
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5); 
 }
 
-/* Indicador de último movimiento */
 .ultimo-movimiento {
     box-shadow: inset 0 0 15px rgba(241, 196, 15, 0.7);
     animation: palpitar 1.5s infinite;
@@ -267,4 +251,14 @@ select {
     0% { opacity: 0.8; }
     50% { opacity: 0.4; }
     100% { opacity: 0.8; }
+}
+
+/* ANIMACIÓN PARA LA PANTALLA DE VICTORIA */
+.animacion-ganador {
+    animation: popGanador 1s ease-out infinite alternate;
+}
+
+@keyframes popGanador {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.1); }
 }
