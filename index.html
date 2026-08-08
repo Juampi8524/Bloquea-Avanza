@@ -45,11 +45,11 @@
         <div class="config-item" style="margin-bottom: 20px;">
             <p>Tamaño del Tablero:</p>
             <select id="select-tamano">
-                <option value="5">Micro (5x5)</option>
-                <option value="7">Rápido (7x7)</option>
-                <option value="9" selected>Estándar (9x9)</option>
-                <option value="11">Táctico (11x11)</option>
-                <option value="13">Masivo (13x13)</option>
+                <option value="5">Micro (5x5 - 1 Min)</option>
+                <option value="7">Rápido (7x7 - 2 Mins)</option>
+                <option value="9" selected>Estándar (9x9 - 3 Mins)</option>
+                <option value="11">Táctico (11x11 - 4 Mins)</option>
+                <option value="13">Masivo (13x13 - 5 Mins)</option>
             </select>
         </div>
         <button onclick="iniciarJuego('ia')">VS IA</button>
@@ -104,7 +104,8 @@
                 <button id="btn-pared" onclick="cambiarAccion('pared')">Poner Pared</button>
                 <button id="btn-orientacion" style="display:none; background:#d35400" onclick="alternarOrientacion()">Dir: Horizontal</button>
             </div>
-            <p>Tus paredes: <span id="paredes-p1">10</span></p>
+            
+            <p>Tus paredes: <span id="paredes-p1">10</span> | Rival: <span id="paredes-p2" style="color: #ff4b4b;">10</span></p>
         </div>
         
         <div id="contenedor-tablero" style="position: relative;">
@@ -122,6 +123,14 @@
         <div id="mensaje-chat" style="height: 24px; color: #f1c40f; margin-top: 5px;"></div>
 
         <button class="btn-secundario" onclick="mostrarPantalla('pantalla-inicio')">Abandonar Partida</button>
+    </div>
+
+    <div id="pantalla-victoria" class="pantalla victoria-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 3000; background: rgba(0,0,0,0.9); justify-content: center; align-items: center;">
+        <div style="text-align: center;">
+            <h1 id="texto-victoria" class="animacion-ganador" style="font-size: 50px; color: #f1c40f; text-shadow: 0 0 20px #f1c40f; margin-bottom: 10px;">¡Ganador!</h1>
+            <p id="motivo-victoria" style="font-size: 20px; color: #fff; margin-bottom: 30px;">Llegó a la meta</p>
+            <button onclick="document.getElementById('pantalla-victoria').style.display='none'; mostrarPantalla('pantalla-inicio');" style="background: #4facfe;">Volver al Menú</button>
+        </div>
     </div>
 
     <audio id="sonido-mover" src="https://actions.google.com/sounds/v1/foley/footstep_single_on_wood.ogg"></audio>
