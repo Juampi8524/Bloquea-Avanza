@@ -1,5 +1,4 @@
 // --- CONFIGURACIÓN DE FIREBASE ---
-// Aquí están los datos reales sacados de tus capturas
 const firebaseConfig = {
     apiKey: "AIzaSyBxCFp3QPKXAQ2RGvJggVeIZU_ckoPmBr4",
     authDomain: "chapas-42a4b.firebaseapp.com",
@@ -11,7 +10,6 @@ const firebaseConfig = {
     measurementId: "G-QNJELSL2C9"
 };
 
-// Inicializar Firebase y la Base de Datos
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
@@ -26,16 +24,19 @@ let orientacionPared = 'horizontal';
 let nombreJugador = "Jugador";
 let salaActual = "";
 let paredesTablero = []; 
+let nombreRival = "Oponente";
 
 // --- VARIABLES GLOBALES NUEVAS ---
 let tamanoTablero = 9;
 let avatarJugador = "😃";
 let avatarOponente = "🤖";
+let tiempoInicial = 180; 
 
 // Temporizadores Blitz
 let tiempoP1 = 180; 
 let tiempoP2 = 180; 
 let timerInterval;
+let juegoTerminado = false;
 
 // --- FUNCIONES DE NAVEGACIÓN Y MENÚS ---
 function mostrarPantalla(id) {
@@ -54,7 +55,6 @@ function crearSala() {
     salaActual = codigo;
     miRol = 1;
     
-    // Configurar vista Lobby
     document.getElementById('codigo-sala-display').innerText = codigo;
     document.getElementById('estado-jugadores').innerText = "Jugadores: 1/2";
     document.getElementById('lobby-p1').innerText = "1. " + avatarJugador + " " + nombreJugador + " (Líder)";
@@ -65,9 +65,12 @@ function crearSala() {
     btnIniciar.style.background = "#555";
     btnIniciar.innerText = "Esperando rival...";
 
+    let tamanoLider = parseInt(document.getElementById('select-tamano').value);
+
     if(typeof db !== 'undefined') {
         db.ref('salas/' + codigo).set({
             estado: 'esperando',
+            tamano: tamanoLider, // El líder guarda el tamaño para que el rival se adapte
             p1: { nombre: nombreJugador, avatar: avatarJugador }
         });
         escucharSala(codigo);
@@ -77,13 +80,11 @@ function crearSala() {
     mostrarPantalla('pantalla-lobby');
 }
 
-// NUEVA FUNCIÓN: Muestra la pantalla para ingresar el código
 function unirseSala() {
     document.getElementById('input-codigo-sala').value = ""; 
     mostrarPantalla('pantalla-unirse');
 }
 
-// NUEVA FUNCIÓN: Procesa el código ingresado
 function confirmarUnirseSala() {
     let codigo = document.getElementById('input-codigo-sala').value;
     
@@ -114,15 +115,20 @@ function escucharSala(codigo) {
         let data = snapshot.val();
         if(!data) return;
 
-        // Actualizar UI del Lobby
+        // Si el rival lee el tamaño de la base de datos, sincroniza su menú
+        if (data.tamano && miRol === 2) {
+            document.getElementById('select-tamano').value = data.tamano;
+        }
+
         if (data.p1) {
             document.getElementById('lobby-p1').innerText = "1. " + data.p1.avatar + " " + data.p1.nombre;
+            if(miRol === 2) nombreRival = data.p1.nombre;
         }
         if (data.p2) {
             document.getElementById('estado-jugadores').innerText = "Jugadores: 2/2";
             document.getElementById('lobby-p2').innerText = "2. " + data.p2.avatar + " " + data.p2.nombre;
+            if(miRol === 1) nombreRival = data.p2.nombre;
             
-            // Habilitar botón de iniciar solo para el líder
             if (miRol === 1 && data.estado === 'esperando') {
                 let btn = document.getElementById('btn-iniciar-multijugador');
                 btn.disabled = false;
@@ -131,15 +137,12 @@ function escucharSala(codigo) {
             }
         }
 
-        // Si el líder le da click a iniciar
         if (data.estado === 'jugando' && !document.getElementById('pantalla-juego').classList.contains('activa')) {
             modoJuego = 'online';
             
-            // Asignar los avatares según quién es quién
             if(miRol === 1) {
                 document.getElementById('ficha-p1').innerText = data.p1.avatar;
                 document.getElementById('ficha-p2').innerText = data.p2.avatar;
-                // El líder crea el estado inicial del juego en la base de datos
                 db.ref('salas/' + salaActual + '/estadoJuego').set({
                     p1: p1, p2: p2, turno: turno, paredesTablero: []
                 });
@@ -150,39 +153,33 @@ function escucharSala(codigo) {
             iniciarJuegoTablero();
         }
 
-        // ACTUALIZACIÓN ONLINE: Sincronizar los movimientos y paredes
-        if (data.estadoJuego && modoJuego === 'online' && document.getElementById('pantalla-juego').classList.contains('activa')) {
+        if (data.estadoJuego && modoJuego === 'online' && document.getElementById('pantalla-juego').classList.contains('activa') && !juegoTerminado) {
             p1 = data.estadoJuego.p1;
             p2 = data.estadoJuego.p2;
             turno = data.estadoJuego.turno;
             paredesTablero = data.estadoJuego.paredesTablero || [];
-            renderizarEstado(); // Redibuja todo el tablero para ambos
+            renderizarEstado(); 
         }
     });
 }
 
 function iniciarDesdeLobby() {
     if(typeof db !== 'undefined') {
-        db.ref('salas/' + salaActual).update({
-            estado: 'jugando'
-        });
+        db.ref('salas/' + salaActual).update({ estado: 'jugando' });
     }
 }
 
-// --- CONFIGURACIÓN ---
 function guardarConfig() {
     let inputNombre = document.getElementById('input-nombre').value;
     if(inputNombre.trim() !== "") {
         nombreJugador = inputNombre;
         document.getElementById('nombre-menu').innerText = nombreJugador;
     }
-    
     avatarJugador = document.getElementById('select-avatar').value;
     document.getElementById('ficha-p1').innerText = avatarJugador;
     mostrarPantalla('pantalla-inicio');
 }
 
-// --- JUGABILIDAD Y TABLERO ---
 function cambiarAccion(accion) {
     accionActual = accion;
     document.getElementById('btn-mover').classList.remove('activo');
@@ -209,7 +206,12 @@ function alternarOrientacion() {
 }
 
 function iniciarJuegoTablero() {
+    juegoTerminado = false;
     tamanoTablero = parseInt(document.getElementById('select-tamano').value);
+    
+    // MATEMÁTICA DEL TIEMPO SEGÚN EL TAMAÑO
+    let mapaTiempos = { 5: 60, 7: 120, 9: 180, 11: 240, 13: 300 };
+    tiempoInicial = mapaTiempos[tamanoTablero] || 180;
     
     let centro = Math.floor(tamanoTablero / 2);
     let cantParedes = Math.floor(tamanoTablero * 1.2); 
@@ -231,11 +233,8 @@ function iniciarJuegoTablero() {
             celda.dataset.x = x;
             celda.dataset.y = y;
             celda.onclick = () => procesarClic(x, y);
-            
-            // Mostrar sombra amarilla en base a paredes de 2 bloques
             celda.onmouseover = () => simularPared(celda, x, y);
             celda.onmouseout = () => { document.querySelectorAll('.celda').forEach(c => c.style.boxShadow = 'none'); };
-            
             tablero.appendChild(celda);
         }
     }
@@ -249,19 +248,18 @@ function iniciarJuegoTablero() {
     mostrarPantalla('pantalla-juego');
 }
 
-// Ahora simula colocar paredes que ocupan 2 posiciones
 function simularPared(celda, x, y) {
     if(accionActual !== 'pared') return;
     document.querySelectorAll('.celda').forEach(c => c.style.boxShadow = 'none');
     
     if (orientacionPared === 'horizontal') {
-        if (x < tamanoTablero - 1) { // Que no se salga del mapa por la derecha
+        if (x < tamanoTablero - 1) { 
             celda.style.boxShadow = 'inset 0 -5px 0 yellow';
             let celda2 = document.querySelector('.celda[data-x="' + (x+1) + '"][data-y="' + y + '"]');
             if(celda2) celda2.style.boxShadow = 'inset 0 -5px 0 yellow';
         }
     } else {
-        if (y < tamanoTablero - 1) { // Que no se salga por abajo
+        if (y < tamanoTablero - 1) { 
             celda.style.boxShadow = 'inset -5px 0 0 yellow';
             let celda2 = document.querySelector('.celda[data-x="' + x + '"][data-y="' + (y+1) + '"]');
             if(celda2) celda2.style.boxShadow = 'inset -5px 0 0 yellow';
@@ -271,10 +269,12 @@ function simularPared(celda, x, y) {
 
 function iniciarCronometros() {
     clearInterval(timerInterval);
-    tiempoP1 = 180;
-    tiempoP2 = 180;
+    tiempoP1 = tiempoInicial;
+    tiempoP2 = tiempoInicial;
     
     timerInterval = setInterval(() => {
+        if (juegoTerminado) return;
+
         if(turno === 1) tiempoP1--;
         else tiempoP2--;
 
@@ -288,16 +288,26 @@ function iniciarCronometros() {
 
         if (tiempoP1 <= 0 || tiempoP2 <= 0) {
             clearInterval(timerInterval);
-            let ganador = tiempoP1 <= 0 ? "Jugador 2" : "Jugador 1";
-            alert("¡Se acabó el tiempo! Gana " + ganador);
-            mostrarPantalla('pantalla-inicio');
+            let ganador = tiempoP1 <= 0 ? nombreRival : nombreJugador;
+            dispararVictoria(ganador, "Ganó por quedarse sin tiempo");
         }
     }, 1000);
 }
 
-// Nueva función maestra para dibujar TODO (Fichas y Paredes) - Útil para Multijugador
+// Disparador gráfico de la victoria
+function dispararVictoria(ganador, motivo) {
+    if (juegoTerminado) return;
+    juegoTerminado = true;
+    clearInterval(timerInterval);
+    
+    document.getElementById('texto-victoria').innerText = "¡" + ganador + " Gana!";
+    document.getElementById('motivo-victoria').innerText = motivo;
+    document.getElementById('pantalla-victoria').style.display = 'flex';
+}
+
 function renderizarEstado() {
-    // Dibujar Fichas
+    if (juegoTerminado) return;
+
     let f1 = document.getElementById('ficha-p1');
     let f2 = document.getElementById('ficha-p2');
     f1.style.left = (p1.x * 45 + 5) + "px";
@@ -305,7 +315,6 @@ function renderizarEstado() {
     f2.style.left = (p2.x * 45 + 5) + "px";
     f2.style.top = (p2.y * 45 + 5) + "px";
 
-    // Limpiar paredes viejas y dibujar las nuevas
     document.querySelectorAll('.celda').forEach(c => {
         c.classList.remove('pared-abajo');
         c.classList.remove('pared-derecha');
@@ -320,59 +329,82 @@ function renderizarEstado() {
     });
 
     document.getElementById('turno-texto').innerText = turno === miRol ? "Tu turno" : "Turno del oponente";
+    
+    // Acá se ven los inventarios de ambos
     document.getElementById('paredes-p1').innerText = miRol === 1 ? p1.paredes : p2.paredes;
+    document.getElementById('paredes-p2').innerText = miRol === 1 ? p2.paredes : p1.paredes;
 
-    if(p1.y === p1.metaY) { alert("¡Jugador 1 Gana!"); mostrarPantalla('pantalla-inicio'); }
-    if(p2.y === p2.metaY) { alert("¡Jugador 2 Gana!"); mostrarPantalla('pantalla-inicio'); }
+    // Control de meta
+    if(p1.y === p1.metaY) { dispararVictoria(miRol === 1 ? nombreJugador : nombreRival, "Llegó al otro lado de la mesa"); }
+    if(p2.y === p2.metaY) { dispararVictoria(miRol === 2 ? nombreJugador : nombreRival, "Llegó al otro lado de la mesa"); }
 }
 
-// --- LÓGICA DE MOVIMIENTO Y PAREDES ---
 function procesarClic(x, y) {
+    if (juegoTerminado) return;
     if (modoJuego === 'online' && turno !== miRol) {
         alert("No es tu turno.");
         return; 
     }
 
     let jugadorActual = turno === 1 ? p1 : p2;
+    let oponenteActual = turno === 1 ? p2 : p1;
 
     if (accionActual === 'mover') {
-        let distX = Math.abs(jugadorActual.x - x);
-        let distY = Math.abs(jugadorActual.y - y);
+        let dirX = x - jugadorActual.x;
+        let dirY = y - jugadorActual.y;
+        let distAbs = Math.abs(dirX) + Math.abs(dirY);
         
-        if ((distX === 1 && distY === 0) || (distX === 0 && distY === 1)) {
-            // Verificar colisiones con paredes antes de moverse
-            let dirX = x - jugadorActual.x;
-            let dirY = y - jugadorActual.y;
+        if (distAbs === 1) { // Movimiento Normal
+            if (x === oponenteActual.x && y === oponenteActual.y) {
+                alert("Oponente en frente. ¡Haz clic detrás de él para saltarlo!");
+                return;
+            }
             if (!puedeMoverse(jugadorActual.x, jugadorActual.y, dirX, dirY)) {
                 alert("Hay una pared en el camino.");
                 return;
             }
-
-            if (turno === 1) { p1.x = x; p1.y = y; }
-            else { p2.x = x; p2.y = y; }
+            if (turno === 1) { p1.x = x; p1.y = y; } else { p2.x = x; p2.y = y; }
             ejecutarTurno();
+
+        } else if (distAbs === 2 && (dirX === 0 || dirY === 0)) { // Salto sobre el Oponente
+            let medioX = jugadorActual.x + (dirX / 2);
+            let medioY = jugadorActual.y + (dirY / 2);
+            
+            // Verificamos si el oponente está justo en el medio del salto
+            if (oponenteActual.x === medioX && oponenteActual.y === medioY) {
+                // Chequeamos que no haya pared entre el jugador y el rival, ni entre el rival y la meta
+                if (puedeMoverse(jugadorActual.x, jugadorActual.y, dirX/2, dirY/2) && 
+                    puedeMoverse(oponenteActual.x, oponenteActual.y, dirX/2, dirY/2)) {
+                    
+                    if (turno === 1) { p1.x = x; p1.y = y; } else { p2.x = x; p2.y = y; }
+                    ejecutarTurno();
+                } else {
+                    alert("No puedes saltar al oponente porque hay una pared bloqueando.");
+                }
+            } else {
+                alert("Movimiento inválido. Solo puedes moverte 1 bloque, a menos que saltes al oponente.");
+            }
         } else {
             alert("Movimiento inválido.");
         }
+
     } else {
         if (jugadorActual.paredes <= 0) {
             alert("No te quedan paredes.");
             return;
         }
 
-        // Lógica de paredes ocupando 2 espacios
         let celda1, celda2;
         if (orientacionPared === 'horizontal') {
-            if (x >= tamanoTablero - 1) return; // Fuera del mapa
+            if (x >= tamanoTablero - 1) return; 
             celda1 = { x: x, y: y, dir: 'h' };
             celda2 = { x: x + 1, y: y, dir: 'h' };
         } else {
-            if (y >= tamanoTablero - 1) return; // Fuera del mapa
+            if (y >= tamanoTablero - 1) return; 
             celda1 = { x: x, y: y, dir: 'v' };
             celda2 = { x: x, y: y + 1, dir: 'v' };
         }
 
-        // Chequear que no estemos poniendo la pared sobre otra pared
         let overlap = paredesTablero.some(p => 
             (p.x === celda1.x && p.y === celda1.y && p.dir === celda1.dir) ||
             (p.x === celda2.x && p.y === celda2.y && p.dir === celda2.dir)
@@ -382,7 +414,7 @@ function procesarClic(x, y) {
         paredesTablero.push(celda1, celda2);
         
         if (!existeCamino(p1) || !existeCamino(p2)) {
-            paredesTablero.pop(); paredesTablero.pop(); // Revertimos las 2
+            paredesTablero.pop(); paredesTablero.pop(); 
             alert("¡Movimiento ilegal! Estás encerrando a un jugador sin salida a su meta.");
             return;
         }
@@ -392,13 +424,11 @@ function procesarClic(x, y) {
     }
 }
 
-// Ahora el turno se le pasa al otro jugador online
 function ejecutarTurno() {
     reproducirSonido(accionActual);
     turno = turno === 1 ? 2 : 1; 
     
     if (modoJuego === 'online' && typeof db !== 'undefined') {
-        // Enviar nuestro movimiento a Firebase para que el rival lo vea
         db.ref('salas/' + salaActual + '/estadoJuego').set({
             p1: p1,
             p2: p2,
@@ -406,16 +436,15 @@ function ejecutarTurno() {
             paredesTablero: paredesTablero || []
         });
     } else {
-        renderizarEstado(); // Si es VS IA, solo dibuja
+        renderizarEstado();
     }
 }
 
-// --- ALGORITMO BFS (VERIFICAR CAMINO Y COLISIONES) ---
 function puedeMoverse(cx, cy, dx, dy) {
-    if (dy === -1) return !paredesTablero.some(p => p.x === cx && p.y === cy - 1 && p.dir === 'h'); // Mover Arriba
-    if (dy === 1)  return !paredesTablero.some(p => p.x === cx && p.y === cy && p.dir === 'h');     // Mover Abajo
-    if (dx === -1) return !paredesTablero.some(p => p.x === cx - 1 && p.y === cy && p.dir === 'v'); // Mover Izquierda
-    if (dx === 1)  return !paredesTablero.some(p => p.x === cx && p.y === cy && p.dir === 'v');     // Mover Derecha
+    if (dy === -1) return !paredesTablero.some(p => p.x === cx && p.y === cy - 1 && p.dir === 'h'); 
+    if (dy === 1)  return !paredesTablero.some(p => p.x === cx && p.y === cy && p.dir === 'h');     
+    if (dx === -1) return !paredesTablero.some(p => p.x === cx - 1 && p.y === cy && p.dir === 'v'); 
+    if (dx === 1)  return !paredesTablero.some(p => p.x === cx && p.y === cy && p.dir === 'v');     
     return true;
 }
 
@@ -441,7 +470,6 @@ function existeCamino(jugador) {
             let ny = actual.y + mov.dy;
 
             if (nx >= 0 && nx < tamanoTablero && ny >= 0 && ny < tamanoTablero) {
-                // Ahora el verificador sabe si hay una pared en el medio
                 if (puedeMoverse(actual.x, actual.y, mov.dx, mov.dy)) {
                     let key = nx + "," + ny;
                     if (!visitados.has(key)) {
@@ -455,7 +483,6 @@ function existeCamino(jugador) {
     return false;
 }
 
-// --- VISUALES Y SONIDO ---
 function reproducirSonido(tipo) {
     try {
         let audio = document.getElementById(tipo === 'mover' ? 'sonido-mover' : 'sonido-pared');
