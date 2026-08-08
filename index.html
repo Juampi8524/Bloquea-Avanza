@@ -81,6 +81,17 @@
         <p style="font-size: 24px; margin-bottom: 10px;">Código: <strong id="codigo-sala-display" style="color: #e67e22;">------</strong></p>
         <p id="estado-jugadores" style="font-size: 20px; margin-bottom: 20px;">Jugadores: 1/2</p>
         
+        <div class="config-item" style="margin-bottom: 15px; width: 100%;">
+            <p>Tamaño:</p>
+            <select id="select-tamano-lobby" onchange="actualizarTamanoLobby()">
+                <option value="5">Micro (5x5 - 1 Min)</option>
+                <option value="7">Rápido (7x7 - 2 Mins)</option>
+                <option value="9" selected>Estándar (9x9 - 3 Mins)</option>
+                <option value="11">Táctico (11x11 - 4 Mins)</option>
+                <option value="13">Masivo (13x13 - 5 Mins)</option>
+            </select>
+        </div>
+
         <div style="margin-bottom: 20px; text-align: left; background: #1e1e2f; padding: 15px; border-radius: 8px; border: 1px solid #4facfe; width: 100%;">
             <p id="lobby-p1" style="margin-bottom: 10px;">1. Esperando...</p>
             <p id="lobby-p2">2. Esperando...</p>
